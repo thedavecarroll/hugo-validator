@@ -25,6 +25,13 @@ module.exports = {
   // CSS validation glob pattern
   cssPattern: 'themes/*/assets/scss/**/*.scss',
 
+  // HTML validation settings
+  htmlValidation: {
+    exclude: [
+      '**/page/*/index.html', // Hugo pagination redirect pages
+    ],
+  },
+
   // Paths to skip in accessibility/link tests
   skipPaths: ['/rss.xml', '/sitemap.xml', '/robots.txt'],
 
