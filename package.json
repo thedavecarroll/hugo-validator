@@ -1,0 +1,75 @@
+{
+  "name": "hugo-validator",
+  "version": "1.0.0",
+  "description": "Comprehensive validation pipeline for Hugo sites - pre-commit hooks, accessibility testing, link checking, and more",
+  "keywords": [
+    "hugo",
+    "validator",
+    "validation",
+    "accessibility",
+    "wcag",
+    "playwright",
+    "pre-commit",
+    "html-validate",
+    "stylelint"
+  ],
+  "author": "Dave Carroll",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thedavecarroll/hugo-validator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thedavecarroll/hugo-validator/issues"
+  },
+  "homepage": "https://github.com/thedavecarroll/hugo-validator#readme",
+  "bin": {
+    "hugo-validator": "./bin/hugo-validator.js"
+  },
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./configs/stylelint": "./configs/stylelint.base.json",
+    "./configs/htmlvalidate": "./configs/htmlvalidate.base.json"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "tests",
+    "configs",
+    "templates"
+  ],
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "peerDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.49.0",
+    "html-validate": "^10.5.0",
+    "stylelint": "^16.0.0",
+    "stylelint-config-standard-scss": "^16.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@axe-core/playwright": {
+      "optional": false
+    },
+    "@playwright/test": {
+      "optional": false
+    },
+    "html-validate": {
+      "optional": false
+    },
+    "stylelint": {
+      "optional": false
+    },
+    "stylelint-config-standard-scss": {
+      "optional": false
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
