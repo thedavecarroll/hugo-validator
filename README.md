@@ -27,13 +27,83 @@ npm install --save-dev github:thedavecarroll/hugo-validator
 npx hugo-validator init
 
 # Edit the config file with your site settings
-nano hugo-validator.config.js
+nano hugo-validator/hugo-validator.config.js
 
 # Run validation
 npx hugo-validator validate
 ```
 
-For detailed configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
+---
+
+## CLI Commands
+
+### Initialization
+
+```bash
+npx hugo-validator init              # Normal setup (skips existing files)
+npx hugo-validator init --force      # Overwrite existing files
+npx hugo-validator init --skip-hooks # Skip git hooks setup
+```
+
+### Validation
+
+```bash
+npx hugo-validator validate              # Run all stages (smart mode)
+npx hugo-validator validate --only hugo  # Hugo build only
+npx hugo-validator validate --only css   # CSS validation only
+npx hugo-validator validate --only html  # HTML validation only
+npx hugo-validator validate --only tests # Playwright tests only
+npx hugo-validator validate --no-report  # Skip report generation
+```
+
+### Other Commands
+
+```bash
+npx hugo-validator setup-hooks       # Reinstall git hooks
+npx hugo-validator clear-cache       # Clear validation cache
+```
+
+---
+
+## Configuration
+
+After running `init`, edit `hugo-validator/hugo-validator.config.js`:
+
+```javascript
+module.exports = {
+  // Required: Your site's production URL
+  siteUrl: 'https://example.com',
+
+  // External domains to skip in link checking
+  skipExternalDomains: {
+    'linkedin.com': 'Blocks automated requests',
+    'web.archive.org': 'Rate-limits automated requests',
+  },
+
+  // CSS validation glob pattern
+  cssPattern: 'themes/*/assets/scss/**/*.scss',
+
+  // Paths to skip in tests (RSS, sitemap, etc.)
+  skipPaths: ['/rss.xml', '/sitemap.xml', '/robots.txt'],
+
+  // Responsive testing
+  responsive: {
+    wrapperSelector: '.page-wrapper',   // Your main content wrapper
+    spotCheckPages: ['/', '/posts/'],   // Pages to check for wrapper bounds
+  },
+
+  // Interaction testing
+  interaction: {
+    navSelector: '.site-nav a',         // Navigation links for keyboard test
+  },
+
+  // Report settings
+  generateReport: true,
+  reportsDir: 'hugo-validator/reports',
+};
+```
+
+For complete configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
 
 ---
 
