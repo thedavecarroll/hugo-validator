@@ -30,7 +30,7 @@
   "exports": {
     ".": "./lib/index.js",
     "./configs/stylelint": "./configs/stylelint.base.json",
-    "./configs/htmlvalidate": "./configs/htmlvalidate.base.json"
+    "./configs/htmlvalidate": "./configs/htmlvalidate.base.js"
   },
   "files": [
     "bin",

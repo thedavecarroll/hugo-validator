@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.log
+
+# Test artifacts (when running hugo-validator on itself)
+VALIDATION-REPORT.md
+hugo-validator/

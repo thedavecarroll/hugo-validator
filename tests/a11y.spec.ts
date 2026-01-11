@@ -9,7 +9,7 @@ interface Config {
 
 // Load configuration
 function loadConfig(): Config {
-  const configPath = path.join(process.cwd(), 'hugo-validator.config.js');
+  const configPath = path.join(process.cwd(), 'hugo-validator', 'hugo-validator.config.js');
   const defaults: Config = {
     skipPaths: ['/rss.xml', '/sitemap.xml', '/robots.txt'],
   };
@@ -66,6 +66,7 @@ async function getAllPages(page: any, baseURL: string): Promise<string[]> {
 
 test.describe('Accessibility (WCAG 2.2)', () => {
   test('all pages pass WCAG 2.2 AA', async ({ page, baseURL }) => {
+    test.setTimeout(600000); // 10 minutes - accessibility checks take time
     const allPages = await getAllPages(page, baseURL!);
     const pages = allPages.filter(p => !config.skipPaths.some(skip => p.endsWith(skip)));
     console.log(`Testing ${pages.length} pages for accessibility (skipped ${allPages.length - pages.length} non-HTML)`);

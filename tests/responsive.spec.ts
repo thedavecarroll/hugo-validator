@@ -11,7 +11,7 @@ interface Config {
 
 // Load configuration
 function loadConfig(): Config {
-  const configPath = path.join(process.cwd(), 'hugo-validator.config.js');
+  const configPath = path.join(process.cwd(), 'hugo-validator', 'hugo-validator.config.js');
   const defaults: Config = {
     responsive: {
       wrapperSelector: '.page-wrapper',
@@ -80,6 +80,7 @@ async function getAllPages(page: any, baseURL: string): Promise<string[]> {
 
 test.describe('Responsive Layout', () => {
   test('no horizontal overflow on mobile', async ({ page, baseURL }) => {
+    test.setTimeout(300000); // 5 minutes - crawling all pages takes time
     // Set mobile viewport
     await page.setViewportSize({
       width: MOBILE_VIEWPORT.viewport.width,
@@ -182,6 +183,7 @@ test.describe('Responsive Layout', () => {
   });
 
   test('no horizontal overflow on tablet', async ({ page, baseURL }) => {
+    test.setTimeout(300000); // 5 minutes - crawling all pages takes time
     await page.setViewportSize({
       width: TABLET_VIEWPORT.viewport.width,
       height: TABLET_VIEWPORT.viewport.height,
@@ -191,7 +193,18 @@ test.describe('Responsive Layout', () => {
     const overflowPages: { url: string; overflow: number }[] = [];
 
     for (const currentPath of allPages) {
-      await page.goto(`${baseURL}${currentPath}`, { waitUntil: 'load' });
+      // Skip non-HTML pages (RSS feeds, XML files, etc.)
+      if (currentPath.endsWith('.xml') || currentPath.endsWith('.rss') || currentPath.endsWith('.json')) {
+        continue;
+      }
+
+      const response = await page.goto(`${baseURL}${currentPath}`, { waitUntil: 'load' });
+
+      // Skip non-HTML content types
+      const contentType = response?.headers()['content-type'] || '';
+      if (!contentType.includes('text/html')) {
+        continue;
+      }
 
       const overflow = await page.evaluate(() => {
         const docWidth = document.documentElement.scrollWidth;
@@ -211,6 +224,6 @@ test.describe('Responsive Layout', () => {
       expect(overflowPages, `Tablet pages with horizontal overflow:\n${report}`).toHaveLength(0);
     }
 
-    console.log(`Checked ${allPages.length} pages for tablet overflow`);
+    console.log(`Checked ${allPages.length} pages for tablet overflow (skipped non-HTML)`);
   });
 });

@@ -11,7 +11,7 @@ interface Config {
 
 // Load configuration
 function loadConfig(): Config {
-  const configPath = path.join(process.cwd(), 'hugo-validator.config.js');
+  const configPath = path.join(process.cwd(), 'hugo-validator', 'hugo-validator.config.js');
   const defaults: Config = {
     interaction: {
       navSelector: '.site-nav a',
@@ -87,6 +87,7 @@ async function getAllPages(page: any, baseURL: string): Promise<string[]> {
 
 test.describe('Interaction', () => {
   test('touch targets meet minimum size on mobile', async ({ page, baseURL }) => {
+    test.setTimeout(300000); // 5 minutes - crawling all pages takes time
     await page.setViewportSize({
       width: MOBILE_VIEWPORT.viewport.width,
       height: MOBILE_VIEWPORT.viewport.height,

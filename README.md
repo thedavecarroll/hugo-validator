@@ -2,6 +2,8 @@
 
 Comprehensive validation pipeline for Hugo sites. Catch broken links, accessibility issues, CSS problems, and more before they hit production.
 
+> **Note:** This project was created for my personal Hugo sites. It is provided as-is without warranty or guaranteed support. Feel free to use it, fork it, or adapt it to your needs. Issues and pull requests are welcome, but response times may vary.
+
 ## Features
 
 - **Pre-commit hooks** - Automatically validate before every commit
