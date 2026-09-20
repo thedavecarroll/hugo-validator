@@ -39,7 +39,8 @@
     "configs"
   ],
   "scripts": {
-    "test": "node --test \"test/*.test.js\""
+    "test": "npm run typecheck && node --test \"test/*.test.js\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "commander": "^15.0.0"
@@ -74,5 +75,9 @@
   "os": [
     "darwin",
     "linux"
-  ]
+  ],
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "typescript": "^7.0.2"
+  }
 }
