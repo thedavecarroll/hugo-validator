@@ -98,7 +98,7 @@ program
   .action(() => {
     console.log('update-tests is no longer needed. The tests are synced from the installed');
     console.log('package into hugo-validator/.runtime/ on every run. To remove old committed');
-    console.log('copies, run: npx hugo-validator migrate');
+    console.log('copies, run: npx --no hugo-validator migrate');
   });
 
 program

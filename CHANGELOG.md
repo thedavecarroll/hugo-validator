@@ -3,9 +3,13 @@
 Versions follow [semantic versioning](https://semver.org/). Sites that install with
 `github:thedavecarroll/hugo-validator#semver:^2.0.0` receive every 2.x release through `npm update hugo-validator`.
 
-## Unreleased
+## 2.0.1
 
-Nothing here changes what a site installs, so none of it needs a release.
+### Security
+
+- **The generated pre-commit hook no longer uses npx.** hugo-validator is distributed from GitHub only, so the name `hugo-validator` on the npm registry is not ours. The old hook went through npx, unattended. On a fresh clone, before `npm ci`, that would have asked the registry for a package of that name. The hook now runs `node_modules/.bin/hugo-validator` directly, and blocks the commit with "Run: npm ci" when it is missing.
+- **Action for existing sites:** regenerate the hook once with `npx --no hugo-validator setup-hooks --force`. `doctor` warns until you do.
+- Docs, printed hints and CI now say `npx --no hugo-validator ...` and `npx --no playwright ...`. `--no` makes npx run the local copy or stop. A unit test fails if bare npx wording comes back.
 
 ### Internal
 
@@ -20,7 +24,7 @@ The first release since 1.0.0. All validation logic now lives in the package, an
 
 - **Node 24.8.0 or newer is required.**
 - **The tools are dependencies of the package**, not peer dependencies. Remove `@playwright/test`, `@axe-core/playwright`, `html-validate`, `stylelint` and `stylelint-config-standard-scss` from your site's `package.json`.
-- **Tests are no longer copied into the site.** They are synced from the package into `hugo-validator/.runtime/` (gitignored) on every run, together with a generated Playwright config. `update-tests` is gone. Run `npx hugo-validator migrate` to remove old copies.
+- **Tests are no longer copied into the site.** They are synced from the package into `hugo-validator/.runtime/` (gitignored) on every run, together with a generated Playwright config. `update-tests` is gone. Run `npx --no hugo-validator migrate` to remove old copies.
 - **npm scripts go through the package**: `hugo-validator validate --only <stage>` and `hugo-validator test [filter]`.
 - **Broken external links are warnings** by default. Set `links.failOnExternal: true` to make them fail.
 - **Minimum touch target is 24px** (WCAG 2.2 AA), was 44px. Set `interaction.minTouchTarget: 44` for AAA.

@@ -22,17 +22,19 @@ Run these commands **from your Hugo site's root directory**:
 ```bash
 # Install the package (GitHub only, follows 2.x releases)
 npm install --save-dev "github:thedavecarroll/hugo-validator#semver:^2.0.0"
-npx playwright install chromium
+npx --no playwright install chromium
 
 # Initialize - creates config files in your site repo
-npx hugo-validator init
+npx --no hugo-validator init
 
 # Edit the config file with your site settings
 nano hugo-validator/hugo-validator.config.js
 
 # Run validation
-npx hugo-validator validate
+npx --no hugo-validator validate
 ```
+
+**Why `npx --no`?** hugo-validator is distributed from GitHub only, so the name `hugo-validator` on the npm registry is not ours. Plain `npx hugo-validator` runs your local copy when there is one, but with no local install it would ask the registry for a package of that name. `--no` tells npx to run the local copy or stop. The generated pre-commit hook goes one step further and never uses npx at all. The npm scripts that `init` adds (`npm run validate`, `npm test`) are equally safe, because `npm run` only ever uses local packages.
 
 ---
 
@@ -41,32 +43,32 @@ npx hugo-validator validate
 ### Initialization
 
 ```bash
-npx hugo-validator init              # Normal setup (skips existing files)
-npx hugo-validator init --force      # Overwrite existing files
-npx hugo-validator init --skip-hooks # Skip git hooks setup
+npx --no hugo-validator init              # Normal setup (skips existing files)
+npx --no hugo-validator init --force      # Overwrite existing files
+npx --no hugo-validator init --skip-hooks # Skip git hooks setup
 ```
 
 ### Validation
 
 ```bash
-npx hugo-validator validate              # Run all stages (smart mode: skips unchanged, passed stages)
-npx hugo-validator validate --full       # Run every stage, ignore the cache
-npx hugo-validator validate --only hugo  # Hugo build only
-npx hugo-validator validate --only css   # CSS validation only
-npx hugo-validator validate --only html  # HTML validation only
-npx hugo-validator validate --only tests # Playwright tests only
-npx hugo-validator validate --no-report  # Skip report generation
+npx --no hugo-validator validate              # Run all stages (smart mode: skips unchanged, passed stages)
+npx --no hugo-validator validate --full       # Run every stage, ignore the cache
+npx --no hugo-validator validate --only hugo  # Hugo build only
+npx --no hugo-validator validate --only css   # CSS validation only
+npx --no hugo-validator validate --only html  # HTML validation only
+npx --no hugo-validator validate --only tests # Playwright tests only
+npx --no hugo-validator validate --no-report  # Skip report generation
 ```
 
 ### Other Commands
 
 ```bash
-npx hugo-validator setup-hooks       # Reinstall git hooks
-npx hugo-validator test              # Run the Playwright tests directly
-npx hugo-validator test links        # ...filtered, e.g. links or a11y
-npx hugo-validator doctor            # Is this machine and site ready? Node, Hugo, browser, packages, config
-npx hugo-validator migrate           # List files left by older setups (add --yes to remove them)
-npx hugo-validator clear-cache       # Clear validation cache
+npx --no hugo-validator setup-hooks       # Reinstall git hooks
+npx --no hugo-validator test              # Run the Playwright tests directly
+npx --no hugo-validator test links        # ...filtered, e.g. links or a11y
+npx --no hugo-validator doctor            # Is this machine and site ready? Node, Hugo, browser, packages, config
+npx --no hugo-validator migrate           # List files left by older setups (add --yes to remove them)
+npx --no hugo-validator clear-cache       # Clear validation cache
 ```
 
 ---
@@ -161,12 +163,12 @@ sudo ln -s /usr/local/dart-sass/sass /usr/local/bin/sass
 
 ### The tools come with the package
 
-Your site needs **one** dev dependency: `hugo-validator`. It brings Playwright, axe, html-validate, stylelint and the SCSS rule set with it, at versions that are tested together. Do not list those tools in your site's `package.json`. Listing them pins old versions, and `npx hugo-validator doctor` will tell you so.
+Your site needs **one** dev dependency: `hugo-validator`. It brings Playwright, axe, html-validate, stylelint and the SCSS rule set with it, at versions that are tested together. Do not list those tools in your site's `package.json`. Listing them pins old versions, and `npx --no hugo-validator doctor` will tell you so.
 
 After installing, or after any update that brings a new Playwright, download its browser once:
 
 ```bash
-npx playwright install chromium
+npx --no playwright install chromium
 ```
 
 ---
@@ -191,8 +193,8 @@ Your `package-lock.json` records the exact commit either way, so installs stay r
 
 ```bash
 npm update hugo-validator          # newest release inside your range
-npx playwright install chromium    # only needed when Playwright itself was updated
-npx hugo-validator doctor
+npx --no playwright install chromium    # only needed when Playwright itself was updated
+npx --no hugo-validator doctor
 ```
 
 There is nothing else to refresh. The tests and tool versions live in the package. See [CHANGELOG.md](CHANGELOG.md) for what changed.
@@ -217,7 +219,7 @@ hugo version
 ### Tests fail with "Connection refused"
 
 The test server may not have started. Check:
-- `npx hugo-validator doctor` reports the browser launches
+- `npx --no hugo-validator doctor` reports the browser launches
 - Port 3000 is available (or set `testServerPort` in the config)
 - The `public/` directory exists (run `hugo` first)
 
@@ -252,11 +254,11 @@ git config --get core.hooksPath
 
 If not, run:
 ```bash
-npx hugo-validator setup-hooks
+npx --no hugo-validator setup-hooks
 ```
 
 If `core.hooksPath` already points somewhere else (Husky, lefthook), `setup-hooks` leaves it alone.
-Call `npx hugo-validator validate --full` from your existing pre-commit hook, or pass `--force`.
+Call `npx --no hugo-validator validate --full` from your existing pre-commit hook, or pass `--force`.
 
 ### A page fails that the tests never checked before
 
@@ -278,7 +280,7 @@ my-hugo-site/
 │   ├── .runtime/                  # tests + Playwright config, synced from the package on every run (gitignored)
 │   ├── reports/                   # timestamped logs (gitignored)
 │   └── .validation-cache.json     # smart-mode cache (gitignored)
-└── .githooks/pre-commit           # generated, runs: npx hugo-validator validate --full
+└── .githooks/pre-commit           # generated, runs the local install: node_modules/.bin/hugo-validator validate --full
 ```
 
 The tests always match the installed package version. There is nothing to refresh after an upgrade.
@@ -286,9 +288,9 @@ The tests always match the installed package version. There is nothing to refres
 ## Upgrading from an older setup
 
 ```bash
-npx hugo-validator migrate         # lists what would be removed, changes nothing
-npx hugo-validator migrate --yes   # removes it, regenerates the hook, points npm scripts at the package
-npx hugo-validator doctor
+npx --no hugo-validator migrate         # lists what would be removed, changes nothing
+npx --no hugo-validator migrate --yes   # removes it, regenerates the hook, points npm scripts at the package
+npx --no hugo-validator doctor
 ```
 
 `migrate` removes only files that are recognisably the validator's own: committed copies of the tests, old Playwright configs, duplicate root linter configs, output folders of the earlier shell pipeline, and a pre-commit hook that does not call hugo-validator. Tracked files stay recoverable from git.

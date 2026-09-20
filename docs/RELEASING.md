@@ -46,8 +46,8 @@ A version describes what a site receives when it installs the package. Sites rec
 
 ```bash
 npm update hugo-validator
-npx playwright install chromium   # only when Playwright was updated
-npx hugo-validator doctor
+npx --no playwright install chromium   # only when Playwright was updated
+npx --no hugo-validator doctor
 ```
 
 A site on `#semver:^2.0.0` picks up every 2.x tag. A new major needs the site to change its range, which is the point of a major.

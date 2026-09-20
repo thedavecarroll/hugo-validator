@@ -45,11 +45,11 @@ npm ci
 Try Playwright's bundled Chromium first:
 
 ```bash
-npx playwright install chromium
-npx hugo-validator doctor
+npx --no playwright install chromium
+npx --no hugo-validator doctor
 ```
 
-`npx playwright install --with-deps` does not work on Arch, because it calls `apt`. If `doctor` reports that the browser cannot launch because of missing libraries, install them:
+`npx --no playwright install --with-deps` does not work on Arch, because it calls `apt`. If `doctor` reports that the browser cannot launch because of missing libraries, install them:
 
 ```bash
 sudo pacman -S --needed nss nspr at-spi2-core libcups libdrm mesa libxkbcommon \
@@ -62,7 +62,7 @@ If that still fails, use Arch's own Chromium. It needs no display for headless u
 sudo pacman -S --needed chromium
 echo 'export HUGO_VALIDATOR_BROWSER=/usr/bin/chromium' >> ~/.bashrc
 source ~/.bashrc
-npx hugo-validator doctor
+npx --no hugo-validator doctor
 ```
 
 You can also set `browserExecutable: '/usr/bin/chromium'` in the site's `hugo-validator.config.js`, but the environment variable keeps the setting on this machine only.
@@ -70,8 +70,8 @@ You can also set `browserExecutable: '/usr/bin/chromium'` in the site's `hugo-va
 ## 5. Acceptance test
 
 ```bash
-npx hugo-validator doctor            # must end with "Ready to validate"
-npx hugo-validator validate --full
+npx --no hugo-validator doctor            # must end with "Ready to validate"
+npx --no hugo-validator validate --full
 ```
 
 If `doctor` cannot get a browser to launch with either option, this machine cannot run the browser tests. The fallback is to run validation on another machine and use this one for editing and deploying.

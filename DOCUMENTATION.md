@@ -86,58 +86,58 @@ module.exports = {
 
 ## CLI Commands
 
-### `npx hugo-validator init`
+### `npx --no hugo-validator init`
 
 Initialize hugo-validator in your project:
 
 ```bash
-npx hugo-validator init          # Normal setup (skips existing files)
-npx hugo-validator init --force  # Overwrite existing files
-npx hugo-validator init --skip-hooks  # Skip git hooks setup
+npx --no hugo-validator init          # Normal setup (skips existing files)
+npx --no hugo-validator init --force  # Overwrite existing files
+npx --no hugo-validator init --skip-hooks  # Skip git hooks setup
 ```
 
-### `npx hugo-validator validate`
+### `npx --no hugo-validator validate`
 
 Run the full validation pipeline:
 
 ```bash
-npx hugo-validator validate              # Run all stages (smart mode)
-npx hugo-validator validate --full       # Run every stage, ignore the cache
-npx hugo-validator validate --only hugo  # Hugo build only
-npx hugo-validator validate --only css   # CSS validation only
-npx hugo-validator validate --only html  # HTML validation only
-npx hugo-validator validate --only tests # Playwright tests only
-npx hugo-validator validate --no-kill    # Don't kill dev servers
-npx hugo-validator validate --no-report  # Skip report generation
+npx --no hugo-validator validate              # Run all stages (smart mode)
+npx --no hugo-validator validate --full       # Run every stage, ignore the cache
+npx --no hugo-validator validate --only hugo  # Hugo build only
+npx --no hugo-validator validate --only css   # CSS validation only
+npx --no hugo-validator validate --only html  # HTML validation only
+npx --no hugo-validator validate --only tests # Playwright tests only
+npx --no hugo-validator validate --no-kill    # Don't kill dev servers
+npx --no hugo-validator validate --no-report  # Skip report generation
 ```
 
-### `npx hugo-validator test`
+### `npx --no hugo-validator test`
 
 Run the Playwright tests directly, with Playwright's own output:
 
 ```bash
-npx hugo-validator test           # all tests
-npx hugo-validator test links     # only files matching "links"
-npx hugo-validator test --ui      # Playwright UI mode (needs a display)
+npx --no hugo-validator test           # all tests
+npx --no hugo-validator test links     # only files matching "links"
+npx --no hugo-validator test --ui      # Playwright UI mode (needs a display)
 ```
 
-The site must already be built (`hugo`, or `npx hugo-validator validate --only hugo`).
+The site must already be built (`hugo`, or `npx --no hugo-validator validate --only hugo`).
 
-### `npx hugo-validator doctor`
+### `npx --no hugo-validator doctor`
 
 Checks that this machine and site can run validation: Node version, Hugo extended, Dart Sass, a port tool, package versions against the supported ranges, that a headless browser really launches, config sanity, the git hook, and leftover legacy files. Exits non-zero when something blocks validation. Run it first on a new machine.
 
-### `npx hugo-validator migrate`
+### `npx --no hugo-validator migrate`
 
 Lists files left behind by older setups. With `--yes` it removes them, regenerates the pre-commit hook and points the npm scripts at the package. Without `--yes` nothing changes.
 
-### `npx hugo-validator setup-hooks`
+### `npx --no hugo-validator setup-hooks`
 
 Reinstall git hooks (useful if they get removed):
 
 ```bash
-npx hugo-validator setup-hooks
-npx hugo-validator setup-hooks --force  # Overwrite existing hook
+npx --no hugo-validator setup-hooks
+npx --no hugo-validator setup-hooks --force  # Overwrite existing hook
 ```
 
 ---
@@ -296,13 +296,22 @@ npm run test:ui          # Playwright UI mode
 
 ## Pre-commit Hook
 
-The generated hook is minimal:
+The generated hook is small:
 
 ```bash
 #!/bin/sh
-npx hugo-validator validate --full
+BIN="node_modules/.bin/hugo-validator"
+if [ ! -x "$BIN" ]; then
+  echo "hugo-validator is not installed in this project. Run: npm ci" >&2
+  exit 1
+fi
+"$BIN" validate --full
 exit $?
 ```
+
+It runs the locally installed package directly and never uses npx. hugo-validator is distributed from GitHub only, so the name on the npm registry is not ours. A hook that called `npx hugo-validator` on a fresh clone, before `npm ci`, would ask the registry for that name. This hook blocks the commit with a clear message instead.
+
+Hooks generated before 2.0.1 used npx. `doctor` warns about them. Regenerate with `npx --no hugo-validator setup-hooks --force`.
 
 The hook always runs the complete pipeline. Cached results never gate a commit.
 If `core.hooksPath` is already set by another tool, `setup-hooks` leaves it unchanged unless you pass `--force`.

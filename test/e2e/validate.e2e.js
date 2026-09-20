@@ -213,6 +213,67 @@ test('detects: small touch target and horizontal overflow', () => {
   assert.ok(failures.some(f => /overflow on tablet/.test(f.name)), JSON.stringify(failures, null, 2));
 });
 
+// ------------------------------------------------------------ pre-commit hook
+
+function git(root, args, extraPath = []) {
+  const env = { ...process.env, FORCE_COLOR: '0' };
+  // The hook needs `sass` for Hugo. extraPath goes first so a test can plant a decoy.
+  env.PATH = [...extraPath, path.join(PACKAGE_ROOT, 'node_modules', '.bin'), process.env.PATH].join(path.delimiter);
+  for (const name of ['GIT_INDEX_FILE', 'GIT_DIR', 'GIT_WORK_TREE', 'CI']) delete env[name];
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', timeout: 300000, env });
+  // eslint-disable-next-line no-control-regex
+  return { status: result.status, output: `${result.stdout || ''}${result.stderr || ''}`.replace(/\u001b\[[0-9;]*m/g, '') };
+}
+
+function makeGitSite() {
+  const root = makeSite();
+  // What `npm install` creates for a real site: the executable the hook runs
+  fs.mkdirSync(path.join(root, 'node_modules', '.bin'));
+  fs.symlinkSync(CLI, path.join(root, 'node_modules', '.bin', 'hugo-validator'));
+  for (const args of [['init', '-q'], ['config', 'user.email', 'e2e@example.test'], ['config', 'user.name', 'e2e']]) {
+    assert.strictEqual(git(root, args).status, 0);
+  }
+  const setup = cli(root, ['setup-hooks']);
+  assert.strictEqual(setup.status, 0, setup.output);
+  return root;
+}
+
+test('pre-commit hook: a commit runs the full pipeline through the local install', () => {
+  const root = makeGitSite();
+  const hook = fs.readFileSync(path.join(root, '.githooks', 'pre-commit'), 'utf8');
+  assert.match(hook, /node_modules\/\.bin\/hugo-validator/);
+
+  assert.strictEqual(git(root, ['add', '-A']).status, 0);
+  const commit = git(root, ['commit', '-m', 'first']);
+  assert.strictEqual(commit.status, 0, commit.output);
+  assert.match(commit.output, /✅ All validations passed/);
+  assert.doesNotMatch(commit.output, /skipped - unchanged/, 'a hook run is always a full run');
+  assert.strictEqual(git(root, ['rev-list', '--count', 'HEAD']).output.trim(), '1');
+});
+
+test('pre-commit hook: without a local install the commit is blocked and npx is never called', () => {
+  const root = makeGitSite();
+  assert.strictEqual(git(root, ['add', '-A']).status, 0);
+  assert.strictEqual(git(root, ['commit', '-m', 'first']).status, 0);
+
+  // A fresh clone before `npm ci`: no node_modules
+  fs.rmSync(path.join(root, 'node_modules'), { recursive: true, force: true });
+
+  // A decoy npx, first on PATH. If the hook ever calls the package runner, this leaves a marker.
+  const decoyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-validator-decoy-'));
+  const marker = path.join(decoyDir, 'npx-was-called');
+  fs.writeFileSync(path.join(decoyDir, 'npx'), `#!/bin/sh\necho "$@" > "${marker}"\nexit 0\n`, { mode: 0o755 });
+
+  append(root, 'content/about.md', '\nA change to commit.\n');
+  assert.strictEqual(git(root, ['add', '-A'], [decoyDir]).status, 0);
+  const commit = git(root, ['commit', '-m', 'second'], [decoyDir]);
+
+  assert.notStrictEqual(commit.status, 0, 'the commit must be blocked');
+  assert.match(commit.output, /hugo-validator is not installed in this project\. Run: npm ci/);
+  assert.ok(!fs.existsSync(marker), 'the hook called npx, which could reach the npm registry');
+  assert.strictEqual(git(root, ['rev-list', '--count', 'HEAD']).output.trim(), '1', 'no second commit was created');
+});
+
 // ------------------------------------------------------------ init / migrate
 
 test('init writes configuration only, and migrate removes only what is the validator\'s', () => {

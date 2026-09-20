@@ -47,7 +47,7 @@ jobs:
       - run: npm ci
 
       - name: Install the browser for this Playwright version
-        run: npx playwright install --with-deps chromium
+        run: npx --no playwright install --with-deps chromium
 
       - name: Type check and unit tests
         run: npm test

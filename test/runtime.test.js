@@ -131,8 +131,11 @@ test('migrate only flags files that are recognisably the validator\'s', () => {
   ]);
   assert.strictEqual(isValidatorTestsDir(path.join(root, 'tests')), false);
 
-  const clean = makeTree({ '.githooks/pre-commit': 'npx hugo-validator validate --full\n' });
-  assert.deepStrictEqual(findLegacy(clean), []);
+  // A generated hook is not legacy: neither today's, nor the 2.0.0 one that
+  // still called npx (doctor warns about that one, migrate leaves it alone)
+  const { PRE_COMMIT_HOOK } = require('../lib/hooks');
+  assert.deepStrictEqual(findLegacy(makeTree({ '.githooks/pre-commit': PRE_COMMIT_HOOK })), []);
+  assert.deepStrictEqual(findLegacy(makeTree({ '.githooks/pre-commit': 'npx hugo-validator validate --full\n' })), []);
 });
 
 test('doctor version helpers', () => {
