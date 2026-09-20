@@ -42,6 +42,10 @@ A version describes what a site receives when it installs the package. Sites rec
 
    The `tag-matches-version` job fails if the tag and `package.json` disagree. If it fails, delete the tag, fix the version, and tag again.
 
+4. **Publish the GitHub Release last**, only after the tag job is green: Releases, "Draft a new release", choose the tag, paste that version's `CHANGELOG.md` section, publish.
+
+   Release immutability is enabled on this repository. Once a release is published, its tag can no longer be moved or deleted, so a mistake found after this step cannot be fixed. It needs a new patch version. A tag without a published release can still be deleted and redone, which is why the order is tag, check, then publish.
+
 ## What sites do
 
 ```bash
