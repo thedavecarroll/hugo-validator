@@ -1,89 +1,11 @@
 import { test, expect, devices } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
-
-interface Config {
-  interaction: {
-    navSelector: string;
-    touchTargetSelectors: string[];
-  };
-}
-
-// Load configuration
-function loadConfig(): Config {
-  const configPath = path.join(process.cwd(), 'hugo-validator', 'hugo-validator.config.js');
-  const defaults: Config = {
-    interaction: {
-      navSelector: '.site-nav a',
-      touchTargetSelectors: [
-        'button',
-        'input',
-        'select',
-        'textarea',
-        '[role="button"]',
-        'nav a',
-        '.footer-icons a',
-      ],
-    },
-  };
-
-  if (fs.existsSync(configPath)) {
-    try {
-      const userConfig = require(configPath);
-      return {
-        interaction: { ...defaults.interaction, ...userConfig.interaction },
-      };
-    } catch {
-      return defaults;
-    }
-  }
-  return defaults;
-}
+import { loadConfig, getAllPages } from './helpers';
 
 const config = loadConfig();
 
 const MOBILE_VIEWPORT = devices['iPhone 12'];
-const TIMEOUT = 10000;
-const MIN_TOUCH_TARGET = 44; // WCAG 2.2 minimum touch target size
-
-// Pages to test
-async function getAllPages(page: any, baseURL: string): Promise<string[]> {
-  const visited = new Set<string>();
-  const toVisit = ['/'];
-
-  while (toVisit.length > 0) {
-    const currentPath = toVisit.shift()!;
-    if (visited.has(currentPath)) continue;
-    visited.add(currentPath);
-
-    try {
-      const response = await page.goto(`${baseURL}${currentPath}`, { timeout: TIMEOUT });
-      if (!response || response.status() !== 200) continue;
-
-      const contentType = response.headers()['content-type'] || '';
-      if (!contentType.includes('text/html')) continue;
-    } catch {
-      continue;
-    }
-
-    const links = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('a[href]'))
-        .map(a => a.getAttribute('href'))
-        .filter((href): href is string => href !== null);
-    });
-
-    for (const href of links) {
-      if (href.startsWith('/') && !href.startsWith('//')) {
-        const cleanPath = href.split('#')[0];
-        if (!visited.has(cleanPath) && !toVisit.includes(cleanPath)) {
-          toVisit.push(cleanPath);
-        }
-      }
-    }
-  }
-
-  return Array.from(visited);
-}
+// WCAG 2.2 AA (2.5.8) requires 24px. 44px is the AAA level (2.5.5).
+const MIN_TOUCH_TARGET = config.interaction.minTouchTarget;
 
 test.describe('Interaction', () => {
   test('touch targets meet minimum size on mobile', async ({ page, baseURL }) => {
@@ -93,7 +15,7 @@ test.describe('Interaction', () => {
       height: MOBILE_VIEWPORT.viewport.height,
     });
 
-    const allPages = await getAllPages(page, baseURL!);
+    const allPages = getAllPages(config);
     const violations: { url: string; elements: { selector: string; width: number; height: number }[] }[] = [];
 
     // Get selectors from config
@@ -111,6 +33,13 @@ test.describe('Interaction', () => {
             document.querySelectorAll(selector).forEach(el => {
               const rect = el.getBoundingClientRect();
               const style = window.getComputedStyle(el);
+
+              // Hidden inputs are never a touch target
+              if (el instanceof HTMLInputElement && el.type === 'hidden') return;
+
+              // Screen-reader-only elements (clipped to 1px) cannot be hit by a
+              // pointer, so target size does not apply to them
+              if (rect.width <= 1 && rect.height <= 1) return;
 
               // Skip hidden elements
               if (style.display === 'none' || style.visibility === 'hidden' || rect.width === 0) {
@@ -151,11 +80,18 @@ test.describe('Interaction', () => {
         })
         .join('\n');
 
-      // Use soft assertion - this is a warning, not a hard failure
-      expect.soft(violations, `Touch targets smaller than ${MIN_TOUCH_TARGET}px:\n${report}`).toHaveLength(0);
+      if (config.interaction.failOnTouchTargets) {
+        // Fails the test. Set interaction.failOnTouchTargets: false to get warnings instead.
+        expect(violations, `Touch targets smaller than ${MIN_TOUCH_TARGET}px:\n${report}`).toHaveLength(0);
+      } else {
+        test.info().annotations.push({ type: 'warning', description: `Touch targets smaller than ${MIN_TOUCH_TARGET}px:\n${report}` });
+        console.log(`Warning - touch targets smaller than ${MIN_TOUCH_TARGET}px:\n${report}`);
+      }
     }
 
-    console.log(`Checked ${allPages.length} pages for touch target sizes`);
+    if (process.env.HUGO_VALIDATOR_VERBOSE === '1') {
+      console.log(`Checked ${allPages.length} pages for touch target sizes`);
+    }
   });
 
   test('focus indicators are visible', async ({ page, baseURL }) => {
@@ -184,20 +120,25 @@ test.describe('Interaction', () => {
           outlineStyle: style.outlineStyle,
           outlineWidth: style.outlineWidth,
           outlineColor: style.outlineColor,
+          boxShadow: style.boxShadow,
         };
       });
 
       const hasOutline = outlineStyle.outlineStyle !== 'none' &&
                          outlineStyle.outlineWidth !== '0px' &&
                          outlineStyle.outlineColor !== 'transparent';
+      // Many themes draw the focus ring with box-shadow instead of outline
+      const hasShadow = outlineStyle.boxShadow !== '' && outlineStyle.boxShadow !== 'none';
 
-      if (!hasOutline) {
+      if (!hasOutline && !hasShadow) {
         missingFocus++;
       }
     }
 
     expect(missingFocus, `${missingFocus} navigation links missing focus indicators`).toBe(0);
-    console.log(`Checked homepage for focus indicators`);
+    if (process.env.HUGO_VALIDATOR_VERBOSE === '1') {
+      console.log(`Checked homepage for focus indicators`);
+    }
   });
 
   test('keyboard navigation works', async ({ page, baseURL }) => {
@@ -223,6 +164,8 @@ test.describe('Interaction', () => {
     }
 
     expect(focusedElements.length, 'Should be able to tab through interactive elements').toBeGreaterThan(0);
-    console.log(`Tabbed through ${focusedElements.length} elements: ${focusedElements.slice(0, 5).join(', ')}...`);
+    if (process.env.HUGO_VALIDATOR_VERBOSE === '1') {
+      console.log(`Tabbed through ${focusedElements.length} elements: ${focusedElements.slice(0, 5).join(', ')}...`);
+    }
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "hugo-validator",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Comprehensive validation pipeline for Hugo sites - pre-commit hooks, accessibility testing, link checking, and more",
   "keywords": [
     "hugo",
@@ -36,40 +36,36 @@
     "bin",
     "lib",
     "tests",
-    "configs",
-    "templates"
+    "configs"
   ],
   "scripts": {
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "npm run typecheck && node --test \"test/*.test.js\"",
+    "test:e2e": "node --test --test-concurrency=1 \"test/e2e/*.e2e.js\"",
+    "test:all": "npm test && npm run test:e2e",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "commander": "^12.0.0"
-  },
-  "peerDependencies": {
-    "@axe-core/playwright": "^4.11.0",
-    "@playwright/test": "^1.49.0",
-    "html-validate": "^10.5.0",
-    "stylelint": "^16.0.0",
-    "stylelint-config-standard-scss": "^16.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@axe-core/playwright": {
-      "optional": false
-    },
-    "@playwright/test": {
-      "optional": false
-    },
-    "html-validate": {
-      "optional": false
-    },
-    "stylelint": {
-      "optional": false
-    },
-    "stylelint-config-standard-scss": {
-      "optional": false
-    }
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "commander": "^15.0.0",
+    "html-validate": "^11.16.0",
+    "stylelint": "^17.15.0",
+    "stylelint-config-standard-scss": "^17.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.8.0"
+  },
+  "hugoValidator": {
+    "minHugoVersion": "0.128.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "sass-embedded": "^1.104.1",
+    "semver": "^7.8.5",
+    "typescript": "^7.0.2"
   }
 }

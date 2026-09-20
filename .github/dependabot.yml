@@ -1,0 +1,29 @@
+# Weekly update proposals. Nothing merges on its own: CI runs the unit tests
+# and the end-to-end tests (which prove each validator still catches what it
+# should), and a maintainer merges the green pull requests.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Move the ranges in package.json, not only the lockfile. Sites resolve
+    # this package's dependencies from the ranges, so a lockfile-only bump
+    # would never reach them.
+    versioning-strategy: increase
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request for all compatible updates
+      minor-and-patch:
+        update-types: [minor, patch]
+      # Majors come one at a time: they are the ones that need reading
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} - {{ site.Title }}{{ end }}</title>
+{{- $style := resources.Get "scss/main.scss" | css.Sass (dict "transpiler" "dartsass") }}
+<link rel="stylesheet" href="{{ $style.RelPermalink }}">
+</head>
+<body>
+<div class="page-wrapper">
+<header class="site-header">
+<p class="site-title">{{ site.Title }}</p>
+<nav class="site-nav" aria-label="Main">
+<a href="/">Home</a>
+<a href="/posts/">Posts</a>
+<a href="/about/">About</a>
+</nav>
+</header>
+<main>
+{{ block "main" . }}{{ end }}
+</main>
+<footer class="site-footer">
+<p>Sample site for hugo-validator tests.</p>
+</footer>
+</div>
+</body>
+</html>
