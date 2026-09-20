@@ -4,4 +4,5 @@ node_modules/
 
 # Test artifacts (when running hugo-validator on itself)
 VALIDATION-REPORT.md
+.validation-reports/
 hugo-validator/

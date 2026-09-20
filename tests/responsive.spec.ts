@@ -1,82 +1,10 @@
 import { test, expect, devices } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
-
-interface Config {
-  responsive: {
-    wrapperSelector: string;
-    spotCheckPages: string[];
-  };
-}
-
-// Load configuration
-function loadConfig(): Config {
-  const configPath = path.join(process.cwd(), 'hugo-validator', 'hugo-validator.config.js');
-  const defaults: Config = {
-    responsive: {
-      wrapperSelector: '.page-wrapper',
-      spotCheckPages: ['/', '/posts/', '/about/'],
-    },
-  };
-
-  if (fs.existsSync(configPath)) {
-    try {
-      const userConfig = require(configPath);
-      return {
-        responsive: { ...defaults.responsive, ...userConfig.responsive },
-      };
-    } catch {
-      return defaults;
-    }
-  }
-  return defaults;
-}
+import { loadConfig, getAllPages } from './helpers';
 
 const config = loadConfig();
 
 const MOBILE_VIEWPORT = devices['iPhone 12'];
 const TABLET_VIEWPORT = devices['iPad Mini'];
-const TIMEOUT = 10000;
-
-// Pages to test
-async function getAllPages(page: any, baseURL: string): Promise<string[]> {
-  const visited = new Set<string>();
-  const toVisit = ['/'];
-
-  while (toVisit.length > 0) {
-    const currentPath = toVisit.shift()!;
-    if (visited.has(currentPath)) continue;
-    visited.add(currentPath);
-
-    try {
-      const response = await page.goto(`${baseURL}${currentPath}`, { timeout: TIMEOUT });
-      if (!response || response.status() !== 200) continue;
-
-      // Skip non-HTML
-      const contentType = response.headers()['content-type'] || '';
-      if (!contentType.includes('text/html')) continue;
-    } catch {
-      continue;
-    }
-
-    const links = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('a[href]'))
-        .map(a => a.getAttribute('href'))
-        .filter((href): href is string => href !== null);
-    });
-
-    for (const href of links) {
-      if (href.startsWith('/') && !href.startsWith('//')) {
-        const cleanPath = href.split('#')[0];
-        if (!visited.has(cleanPath) && !toVisit.includes(cleanPath)) {
-          toVisit.push(cleanPath);
-        }
-      }
-    }
-  }
-
-  return Array.from(visited);
-}
 
 test.describe('Responsive Layout', () => {
   test('no horizontal overflow on mobile', async ({ page, baseURL }) => {
@@ -87,7 +15,7 @@ test.describe('Responsive Layout', () => {
       height: MOBILE_VIEWPORT.viewport.height,
     });
 
-    const allPages = await getAllPages(page, baseURL!);
+    const allPages = getAllPages(config);
     const overflowPages: { url: string; overflow: number }[] = [];
     let checkedCount = 0;
 
@@ -175,8 +103,13 @@ test.describe('Responsive Layout', () => {
       const report = violations
         .map(v => `  ${v.url}: ${v.elements.join(', ')}`)
         .join('\n');
-      // Soft assertion - important but may have edge cases
-      expect.soft(violations, `Elements extending beyond wrapper:\n${report}`).toHaveLength(0);
+      if (config.responsive.failOnWrapperOverflow) {
+        // Fails the test. Set responsive.failOnWrapperOverflow: false to get warnings instead.
+        expect(violations, `Elements extending beyond wrapper:\n${report}`).toHaveLength(0);
+      } else {
+        test.info().annotations.push({ type: 'warning', description: `Elements extending beyond wrapper:\n${report}` });
+        console.log(`Warning - elements extending beyond wrapper:\n${report}`);
+      }
     }
 
     console.log(`Checked ${pagesToCheck.length} pages for content bounds`);
@@ -189,7 +122,7 @@ test.describe('Responsive Layout', () => {
       height: TABLET_VIEWPORT.viewport.height,
     });
 
-    const allPages = await getAllPages(page, baseURL!);
+    const allPages = getAllPages(config);
     const overflowPages: { url: string; overflow: number }[] = [];
 
     for (const currentPath of allPages) {

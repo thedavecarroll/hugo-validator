@@ -2,7 +2,7 @@
 
 const { program } = require('commander');
 const { version } = require('../package.json');
-const { init } = require('../lib/init');
+const { init, updateTests } = require('../lib/init');
 const { validate, clearCache } = require('../lib/validate');
 const { setupHooks } = require('../lib/hooks');
 
@@ -31,7 +31,8 @@ program
   .option('--only <stage>', 'Run only a specific stage: hugo, css, html, tests')
   .option('--full', 'Force all tests to run (ignore cache)')
   .option('--force', 'Alias for --full')
-  .option('--interactive', 'Enable smart mode (skip unchanged passed tests)')
+  .option('--interactive', 'Deprecated: smart mode (skip unchanged passed stages) is already the default')
+  .option('--verbose', 'Include skipped external links in output')
   .option('--no-kill', 'Skip killing dev server processes')
   .option('--no-report', 'Skip report generation')
   .action(async (options) => {
@@ -49,6 +50,18 @@ program
   .description('Clear the validation cache (forces all tests to run next time)')
   .action(() => {
     clearCache();
+  });
+
+program
+  .command('update-tests')
+  .description('Refresh hugo-validator/tests/ from the installed package (config is not touched)')
+  .action(async () => {
+    try {
+      await updateTests();
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
   });
 
 program

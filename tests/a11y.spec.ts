@@ -1,99 +1,54 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import * as fs from 'fs';
-import * as path from 'path';
-
-interface Config {
-  skipPaths: string[];
-}
-
-// Load configuration
-function loadConfig(): Config {
-  const configPath = path.join(process.cwd(), 'hugo-validator', 'hugo-validator.config.js');
-  const defaults: Config = {
-    skipPaths: ['/rss.xml', '/sitemap.xml', '/robots.txt'],
-  };
-
-  if (fs.existsSync(configPath)) {
-    try {
-      const userConfig = require(configPath);
-      return { ...defaults, ...userConfig };
-    } catch {
-      return defaults;
-    }
-  }
-  return defaults;
-}
+import { loadConfig, getAllPages, shard, resolveShardCount, logProgress } from './helpers';
 
 const config = loadConfig();
-const TIMEOUT = 10000;
 
-// Collect all internal pages by crawling
-async function getAllPages(page: any, baseURL: string): Promise<string[]> {
-  const visited = new Set<string>();
-  const toVisit = ['/'];
-
-  while (toVisit.length > 0) {
-    const currentPath = toVisit.shift()!;
-    if (visited.has(currentPath)) continue;
-    visited.add(currentPath);
-
-    try {
-      const response = await page.goto(`${baseURL}${currentPath}`, { timeout: TIMEOUT });
-      if (!response || response.status() !== 200) continue;
-    } catch {
-      continue;
-    }
-
-    const links = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('a[href]'))
-        .map(a => a.getAttribute('href'))
-        .filter((href): href is string => href !== null);
-    });
-
-    for (const href of links) {
-      if (href.startsWith('/') && !href.startsWith('//')) {
-        const cleanPath = href.split('#')[0];
-        if (!visited.has(cleanPath) && !toVisit.includes(cleanPath)) {
-          toVisit.push(cleanPath);
-        }
-      }
-    }
-  }
-
-  return Array.from(visited);
-}
+// Pages come from public/ on disk, so the list is known when tests are defined.
+// Axe takes about a second per page. Splitting the list into parallel tests is
+// what keeps this suite fast: one test per shard, each on its own worker.
+const pages = getAllPages(config);
+const shards = shard(pages, resolveShardCount(config.accessibility.shards));
 
 test.describe('Accessibility (WCAG 2.2)', () => {
-  test('all pages pass WCAG 2.2 AA', async ({ page, baseURL }) => {
-    test.setTimeout(600000); // 10 minutes - accessibility checks take time
-    const allPages = await getAllPages(page, baseURL!);
-    const pages = allPages.filter(p => !config.skipPaths.some(skip => p.endsWith(skip)));
-    console.log(`Testing ${pages.length} pages for accessibility (skipped ${allPages.length - pages.length} non-HTML)`);
+  if (pages.length === 0) {
+    test('all pages pass WCAG 2.2 AA', async () => {
+      expect(pages.length, 'No HTML pages found in public/ - did the Hugo build run?').toBeGreaterThan(0);
+    });
+    return;
+  }
 
-    const violations: { url: string; issues: any[] }[] = [];
+  shards.forEach((shardPages, index) => {
+    const title = shards.length === 1
+      ? 'all pages pass WCAG 2.2 AA'
+      : `all pages pass WCAG 2.2 AA (part ${index + 1} of ${shards.length})`;
 
-    for (const currentPath of pages) {
-      await page.goto(`${baseURL}${currentPath}`, { waitUntil: 'load' });
+    test(title, async ({ page, baseURL }) => {
+      test.setTimeout(600000); // 10 minutes - accessibility checks take time
+      const label = shards.length === 1 ? 'Accessibility' : `Accessibility part ${index + 1}/${shards.length}`;
+      const violations: { url: string; issues: any[] }[] = [];
 
-      const results = await new AxeBuilder({ page })
-        .options({
-          runOnly: {
-            type: 'tag',
-            values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
-          },
-          rules: {
-            'target-size': { enabled: true },
-          },
-        })
-        .analyze();
+      for (const [done, currentPath] of shardPages.entries()) {
+        await page.goto(`${baseURL}${currentPath}`, { waitUntil: 'load' });
 
-      if (results.violations.length > 0) {
-        violations.push({ url: currentPath, issues: results.violations });
+        const results = await new AxeBuilder({ page })
+          .options({
+            runOnly: {
+              type: 'tag',
+              values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'],
+            },
+            rules: {
+              'target-size': { enabled: true },
+            },
+          })
+          .analyze();
+
+        if (results.violations.length > 0) {
+          violations.push({ url: currentPath, issues: results.violations });
+        }
+        logProgress(label, done + 1, shardPages.length);
       }
-    }
 
-    if (violations.length > 0) {
       const report = violations
         .map(v => {
           const issues = v.issues
@@ -104,8 +59,7 @@ test.describe('Accessibility (WCAG 2.2)', () => {
         .join('\n\n');
 
       expect(violations, `Accessibility violations:\n${report}`).toHaveLength(0);
-    }
-
-    console.log(`All ${pages.length} pages passed WCAG 2.2 AA`);
+      console.log(`${shardPages.length} pages passed WCAG 2.2 AA`);
+    });
   });
 });

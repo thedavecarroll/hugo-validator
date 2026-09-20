@@ -10,10 +10,11 @@ All settings are in `hugo-validator.config.js`:
 
 ```javascript
 module.exports = {
-  // Required: Your site's URL
+  // Required: Your site's production URL. Absolute links to it are treated as
+  // internal and checked against the local build, not against production.
   siteUrl: 'https://example.com',
 
-  // Ports to kill before validation (dev servers)
+  // Ports to free before validation. Only processes LISTENING on the port are stopped.
   portsToKill: [1313, 3000],
 
   // External domains to skip in link checking
@@ -25,7 +26,7 @@ module.exports = {
   // CSS validation glob pattern
   cssPattern: 'themes/*/assets/scss/**/*.scss',
 
-  // HTML validation settings
+  // HTML validation: every public/**/*.html file is validated, minus these globs
   htmlValidation: {
     exclude: [
       '**/page/*/index.html', // Hugo pagination redirect pages
@@ -39,22 +40,41 @@ module.exports = {
   responsive: {
     wrapperSelector: '.page-wrapper',
     spotCheckPages: ['/', '/posts/', '/about/'],
+    failOnWrapperOverflow: true, // false = report as warnings
+  },
+
+  // Accessibility testing: pages are split into parallel tests
+  accessibility: {
+    shards: 0, // 0 = automatic (about 40% of CPU cores). Set a number to override
+  },
+
+  // Link testing
+  links: {
+    failOnExternal: false,    // Broken external links are warnings. true = they fail validation
+    ignoreHTTPSErrors: false, // true = accept expired or self-signed certificates
   },
 
   // Interaction testing
   interaction: {
     navSelector: '.site-nav a',
     touchTargetSelectors: ['button', 'input', 'nav a'],
+    minTouchTarget: 24,       // px. 24 = WCAG 2.2 AA (2.5.8), 44 = AAA (2.5.5)
+    failOnTouchTargets: true, // false = report as warnings
   },
 
   // Report settings
   generateReport: true,  // Set to false to disable VALIDATION-REPORT.md
   reportRetention: 8,
   reportFilename: 'VALIDATION-REPORT.md',
-  reportsDir: '.validation-reports',
+  reportsDir: 'hugo-validator/reports',
 
-  // Test server
+  // Parallel Playwright workers: a number or a percentage of CPU cores.
+  // null = Playwright's default (50%). Ignored when the CI environment variable is set.
+  testWorkers: '80%',
+
+  // Test server (read by hugo-validator/playwright.config.ts)
   testServerPort: 3000,
+  testServerCommand: null, // null = python3 -m http.server <port> --directory ../public
 };
 ```
 
@@ -77,7 +97,8 @@ npx hugo-validator init --skip-hooks  # Skip git hooks setup
 Run the full validation pipeline:
 
 ```bash
-npx hugo-validator validate              # Run all stages
+npx hugo-validator validate              # Run all stages (smart mode)
+npx hugo-validator validate --full       # Run every stage, ignore the cache
 npx hugo-validator validate --only hugo  # Hugo build only
 npx hugo-validator validate --only css   # CSS validation only
 npx hugo-validator validate --only html  # HTML validation only
@@ -85,6 +106,17 @@ npx hugo-validator validate --only tests # Playwright tests only
 npx hugo-validator validate --no-kill    # Don't kill dev servers
 npx hugo-validator validate --no-report  # Skip report generation
 ```
+
+### `npx hugo-validator update-tests`
+
+Projects run their own copy of the tests in `hugo-validator/tests/`. After upgrading the package, refresh them:
+
+```bash
+npx hugo-validator update-tests
+```
+
+Only `hugo-validator/tests/` is overwritten. Your config, hook and linting configs are not touched.
+Local edits to the test files are lost, so commit first.
 
 ### `npx hugo-validator setup-hooks`
 
@@ -108,6 +140,33 @@ The pipeline runs these stages in order:
 5. **Playwright tests** - Runs link, accessibility, responsive, and interaction tests
 
 If any stage fails, the commit is blocked (when run as pre-commit hook).
+If the Hugo build fails, HTML validation and the tests are skipped, because `public/` would be stale.
+The build uses `--cleanDestinationDir`, so pages you deleted are removed from `public/`.
+
+### Smart mode
+
+`validate` without `--full` skips a stage when it passed last time and none of its inputs changed.
+Inputs are hashed in full, with no file limit:
+
+| Stage | Inputs |
+|-------|--------|
+| hugo | Hugo config files, `config/`, `content/`, `layouts/`, `themes/`, `data/`, `assets/`, `static/`, `i18n/`, `archetypes/`, the validator config |
+| css | files matching `cssPattern`, `.stylelintrc.json` |
+| html | `public/**/*.html`, `.htmlvalidate.json`, the validator config |
+| tests | `public/`, `hugo-validator/tests/`, `playwright.config.ts`, the validator config |
+
+After a test failure, only the failed tests rerun, and only while the inputs are identical to the failing run.
+That shortcut is recorded as `partial`, so one complete test run always follows before the stage can be skipped.
+Any input change triggers a complete test run.
+
+The pre-commit hook always runs with `--full`.
+
+### Speed and progress
+
+- Before a stage that took 5 seconds or more last time, the runner prints how long it took, for example `⏳ tests: last run took 1m 8s`.
+- While the tests run, each finished test is printed with a counter, and long tests print progress such as `⏳ Accessibility part 2/4: 25/44`.
+- Accessibility checking costs about a second per page and is CPU-bound. The pages are split into `accessibility.shards` parallel tests, and the runner uses `testWorkers` workers.
+- More shards than about 40% of your cores makes the run slower, because the CPU saturates.
 
 ---
 
@@ -115,10 +174,14 @@ If any stage fails, the commit is blocked (when run as pre-commit hook).
 
 ### Link Validation (`links.spec.ts`)
 
-- Crawls all internal pages starting from `/`
-- Validates all internal links return HTTP 200
+- Reads every generated page from `public/`, so orphan pages are included (Hugo alias redirects are left out)
+- Validates all internal links return HTTP 200, including relative links and downloads such as PDFs
+- Treats absolute links to `siteUrl` as internal
+- Flags links to folders without an `index.html`
 - Checks all external links are reachable (2xx/3xx)
-- Configurable skip domains for problematic external sites
+- Configurable skip domains for problematic external sites. An entry covers the domain and its subdomains only
+- Broken external links are **warnings** by default: they are listed in the console and the report but do not fail validation. Set `links.failOnExternal: true` to make them fail
+- A timeout or dropped connection is retried once before the link is reported. Certificate errors are reported immediately (`links.ignoreHTTPSErrors: true` accepts them)
 
 ### Accessibility (`a11y.spec.ts`)
 
@@ -135,8 +198,9 @@ If any stage fails, the commit is blocked (when run as pre-commit hook).
 
 ### Interaction (`interaction.spec.ts`)
 
-- Tests touch targets meet 44px minimum (WCAG 2.2)
-- Verifies focus indicators are visible
+- Tests touch targets meet `interaction.minTouchTarget` (default 24px, WCAG 2.2 AA. Use 44 for AAA)
+- Ignores hidden inputs and screen-reader-only elements clipped to 1px, which are not pointer targets
+- Verifies focus indicators are visible (outline or box-shadow)
 - Tests keyboard navigation (Tab key traversal)
 
 ---
@@ -148,7 +212,8 @@ Validation generates reports **in your Hugo site directory**:
 ```
 my-hugo-blog/
 ├── VALIDATION-REPORT.md           # Main report (updated each run)
-└── .validation-reports/           # Historical reports
+└── hugo-validator/                # Updated path for historical reports
+  └── reports/                   # Historical reports
     ├── 2025-01-09_143022/
     │   ├── hugo-build.log
     │   ├── css-validation.log
@@ -164,7 +229,7 @@ my-hugo-blog/
    - Updated on each validation run
    - Set `generateReport: false` in config to disable
 
-2. **Timestamped reports** - `.validation-reports/YYYY-MM-DD_HHMMSS/`
+2. **Timestamped reports** - `hugo-validator/reports/YYYY-MM-DD_HHMMSS/`
    - Individual logs for each stage
    - Playwright results JSON
    - Kept for debugging (configurable retention via `reportRetention`)
@@ -220,8 +285,11 @@ The generated hook is minimal:
 
 ```bash
 #!/bin/sh
-npx hugo-validator validate
+npx hugo-validator validate --full
 exit $?
 ```
 
-All logic lives in the npm package, making updates seamless.
+The hook always runs the complete pipeline. Cached results never gate a commit.
+If `core.hooksPath` is already set by another tool, `setup-hooks` leaves it unchanged unless you pass `--force`.
+
+All logic lives in the npm package. The tests are copied into your project, so run `npx hugo-validator update-tests` after upgrading.

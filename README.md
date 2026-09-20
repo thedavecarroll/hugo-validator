@@ -48,7 +48,8 @@ npx hugo-validator init --skip-hooks # Skip git hooks setup
 ### Validation
 
 ```bash
-npx hugo-validator validate              # Run all stages (smart mode)
+npx hugo-validator validate              # Run all stages (smart mode: skips unchanged, passed stages)
+npx hugo-validator validate --full       # Run every stage, ignore the cache
 npx hugo-validator validate --only hugo  # Hugo build only
 npx hugo-validator validate --only css   # CSS validation only
 npx hugo-validator validate --only html  # HTML validation only
@@ -60,6 +61,7 @@ npx hugo-validator validate --no-report  # Skip report generation
 
 ```bash
 npx hugo-validator setup-hooks       # Reinstall git hooks
+npx hugo-validator update-tests      # Refresh hugo-validator/tests/ after upgrading (config untouched)
 npx hugo-validator clear-cache       # Clear validation cache
 ```
 
@@ -71,7 +73,8 @@ After running `init`, edit `hugo-validator/hugo-validator.config.js`:
 
 ```javascript
 module.exports = {
-  // Required: Your site's production URL
+  // Required: Your site's production URL. Links to it are checked against
+  // the local build, so an unpublished post does not fail the link check.
   siteUrl: 'https://example.com',
 
   // External domains to skip in link checking
@@ -92,9 +95,15 @@ module.exports = {
     spotCheckPages: ['/', '/posts/'],   // Pages to check for wrapper bounds
   },
 
+  // Link testing
+  links: {
+    failOnExternal: false,              // Broken external links warn. true = they fail validation
+  },
+
   // Interaction testing
   interaction: {
     navSelector: '.site-nav a',         // Navigation links for keyboard test
+    minTouchTarget: 24,                 // px. 24 = WCAG 2.2 AA, 44 = AAA
   },
 
   // Report settings
@@ -111,15 +120,16 @@ For complete configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
 
 | Tool | Minimum Version | Recommended | Notes |
 |------|-----------------|-------------|-------|
-| Node.js | 18.0.0 | 22+ | Required for Playwright and ES modules |
-| Hugo | 0.100.0 | 0.140+ | Extended version required for SCSS |
+| Node.js | 22.22.0 | 24+ | Minimum set by html-validate 11 and commander 15 |
+| Hugo | 0.100.0 | 0.166+ | Extended version required for SCSS |
 | Dart Sass | 1.50.0 | 1.97+ | System install required (not npm sass package) |
-| Python | 3.7+ | 3.9+ | Used for the test server |
+| Python | 3.7+ | 3.9+ | Default test server (replace with `testServerCommand`) |
+| OS | macOS or Linux | | Port cleanup uses `lsof`. Windows is not supported (WSL works). |
 
 ### Version Check
 
 ```bash
-node --version      # Should be v18.0.0 or higher
+node --version      # Should be v22.22.0 or higher
 hugo version        # Should be 0.100.0 or higher (extended)
 sass --version      # Should be 1.50.0 or higher (Dart Sass)
 python3 --version   # Should be 3.7 or higher
@@ -152,9 +162,9 @@ sudo ln -s /usr/local/dart-sass/sass /usr/local/bin/sass
 Installed automatically when you run `npm install`:
 - `@playwright/test` ^1.49.0
 - `@axe-core/playwright` ^4.11.0
-- `html-validate` ^10.5.0
-- `stylelint` ^16.0.0
-- `stylelint-config-standard-scss` ^16.0.0
+- `html-validate` ^11.16.0
+- `stylelint` ^17.15.0
+- `stylelint-config-standard-scss` ^17.0.0
 
 ---
 
@@ -167,7 +177,7 @@ Installed automatically when you run `npm install`:
 npm install --save-dev github:thedavecarroll/hugo-validator
 
 # Install a specific version (recommended for stability)
-npm install --save-dev github:thedavecarroll/hugo-validator#v1.0.0
+npm install --save-dev github:thedavecarroll/hugo-validator#v2.0.0
 ```
 
 ### Updating
@@ -177,7 +187,7 @@ npm install --save-dev github:thedavecarroll/hugo-validator#v1.0.0
 npm update hugo-validator
 
 # Update to a specific new version
-npm install --save-dev github:thedavecarroll/hugo-validator#v1.2.0
+npm install --save-dev github:thedavecarroll/hugo-validator#v2.0.0
 ```
 
 ### Checking Your Current Version
@@ -201,7 +211,7 @@ hugo version
 
 The test server may not have started. Check:
 - Python 3 is installed
-- Port 3000 is available
+- Port 3000 is available (or set `testServerPort` in the config)
 - The `public/` directory exists (run `hugo` first)
 
 ### CSS validation finds no files
@@ -237,6 +247,31 @@ If not, run:
 ```bash
 npx hugo-validator setup-hooks
 ```
+
+If `core.hooksPath` already points somewhere else (Husky, lefthook), `setup-hooks` leaves it alone.
+Call `npx hugo-validator validate --full` from your existing pre-commit hook, or pass `--force`.
+
+### A page fails that the tests never checked before
+
+Pages are now discovered from `public/` on disk, not by following links, so orphan pages are tested too.
+Add pages you do not want tested to `skipPaths`, for example `skipPaths: ['/rss.xml', '/easter-egg/']`.
+
+---
+
+## Upgrading
+
+After updating the package in an existing project:
+
+```bash
+npx hugo-validator update-tests        # new test files, including tests/helpers.ts
+npx hugo-validator setup-hooks --force # hook now runs validate --full
+npx hugo-validator clear-cache
+```
+
+- `hugo-validator/playwright.config.ts` is not regenerated. To make `testServerPort` and `testServerCommand` take effect, delete it and run `npx hugo-validator init`, which recreates only missing files.
+- Broken external links are now warnings by default. Set `links.failOnExternal: true` to make them fail validation again.
+- The default minimum touch target changed from 44px to 24px (WCAG 2.2 AA). Set `interaction.minTouchTarget: 44` to keep the stricter AAA size.
+- Add `hugo-validator/.validation-cache.json` and `VALIDATION-REPORT.md` to `.gitignore` (new projects get this from `init`).
 
 ---
 
