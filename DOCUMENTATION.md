@@ -72,9 +72,13 @@ module.exports = {
   // null = Playwright's default (50%). Ignored when the CI environment variable is set.
   testWorkers: '80%',
 
-  // Test server (read by hugo-validator/playwright.config.ts)
+  // Test server: the built-in Node server serves public/ on this port
   testServerPort: 3000,
-  testServerCommand: null, // null = python3 -m http.server <port> --directory ../public
+  testServerCommand: null, // null = built-in server. A custom command runs from <site>/hugo-validator
+
+  // Browser for the tests. null = Playwright's bundled Chromium.
+  // Set a path (or env HUGO_VALIDATOR_BROWSER) to use a system browser, e.g. on Arch Linux
+  browserExecutable: null,
 };
 ```
 
@@ -107,16 +111,25 @@ npx hugo-validator validate --no-kill    # Don't kill dev servers
 npx hugo-validator validate --no-report  # Skip report generation
 ```
 
-### `npx hugo-validator update-tests`
+### `npx hugo-validator test`
 
-Projects run their own copy of the tests in `hugo-validator/tests/`. After upgrading the package, refresh them:
+Run the Playwright tests directly, with Playwright's own output:
 
 ```bash
-npx hugo-validator update-tests
+npx hugo-validator test           # all tests
+npx hugo-validator test links     # only files matching "links"
+npx hugo-validator test --ui      # Playwright UI mode (needs a display)
 ```
 
-Only `hugo-validator/tests/` is overwritten. Your config, hook and linting configs are not touched.
-Local edits to the test files are lost, so commit first.
+The site must already be built (`hugo`, or `npx hugo-validator validate --only hugo`).
+
+### `npx hugo-validator doctor`
+
+Checks that this machine and site can run validation: Node version, Hugo extended, Dart Sass, a port tool, package versions against the supported ranges, that a headless browser really launches, config sanity, the git hook, and leftover legacy files. Exits non-zero when something blocks validation. Run it first on a new machine.
+
+### `npx hugo-validator migrate`
+
+Lists files left behind by older setups. With `--yes` it removes them, regenerates the pre-commit hook and points the npm scripts at the package. Without `--yes` nothing changes.
 
 ### `npx hugo-validator setup-hooks`
 
@@ -153,7 +166,9 @@ Inputs are hashed in full, with no file limit:
 | hugo | Hugo config files, `config/`, `content/`, `layouts/`, `themes/`, `data/`, `assets/`, `static/`, `i18n/`, `archetypes/`, the validator config |
 | css | files matching `cssPattern`, `.stylelintrc.json` |
 | html | `public/**/*.html`, `.htmlvalidate.json`, the validator config |
-| tests | `public/`, `hugo-validator/tests/`, `playwright.config.ts`, the validator config |
+| tests | `public/`, the package's own tests, the validator config |
+
+The package version is part of every digest, so upgrading hugo-validator re-runs every stage once.
 
 After a test failure, only the failed tests rerun, and only while the inputs are identical to the failing run.
 That shortcut is recorded as `partial`, so one complete test run always follows before the stage can be skipped.
@@ -292,4 +307,4 @@ exit $?
 The hook always runs the complete pipeline. Cached results never gate a commit.
 If `core.hooksPath` is already set by another tool, `setup-hooks` leaves it unchanged unless you pass `--force`.
 
-All logic lives in the npm package. The tests are copied into your project, so run `npx hugo-validator update-tests` after upgrading.
+All logic lives in the package, including the tests. On every run they are synced into `hugo-validator/.runtime/`, which is gitignored, together with a generated Playwright config. Sites commit configuration only.

@@ -61,7 +61,10 @@ npx hugo-validator validate --no-report  # Skip report generation
 
 ```bash
 npx hugo-validator setup-hooks       # Reinstall git hooks
-npx hugo-validator update-tests      # Refresh hugo-validator/tests/ after upgrading (config untouched)
+npx hugo-validator test              # Run the Playwright tests directly
+npx hugo-validator test links        # ...filtered, e.g. links or a11y
+npx hugo-validator doctor            # Is this machine and site ready? Node, Hugo, browser, packages, config
+npx hugo-validator migrate           # List files left by older setups (add --yes to remove them)
 npx hugo-validator clear-cache       # Clear validation cache
 ```
 
@@ -123,8 +126,7 @@ For complete configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
 | Node.js | 22.22.0 | 24+ | Minimum set by html-validate 11 and commander 15 |
 | Hugo | 0.100.0 | 0.166+ | Extended version required for SCSS |
 | Dart Sass | 1.50.0 | 1.97+ | System install required (not npm sass package) |
-| Python | 3.7+ | 3.9+ | Default test server (replace with `testServerCommand`) |
-| OS | macOS or Linux | | Port cleanup uses `lsof`. Windows is not supported (WSL works). |
+| OS | macOS or Linux | | No GUI needed. Port cleanup uses `lsof`, `ss` or `fuser`, whichever exists. Windows is not supported (WSL works). See [docs/ARCH-SETUP.md](docs/ARCH-SETUP.md) for a headless Arch Linux setup. |
 
 ### Version Check
 
@@ -132,7 +134,6 @@ For complete configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
 node --version      # Should be v22.22.0 or higher
 hugo version        # Should be 0.100.0 or higher (extended)
 sass --version      # Should be 1.50.0 or higher (Dart Sass)
-python3 --version   # Should be 3.7 or higher
 ```
 
 ### Installing Dart Sass
@@ -210,7 +211,7 @@ hugo version
 ### Tests fail with "Connection refused"
 
 The test server may not have started. Check:
-- Python 3 is installed
+- `npx hugo-validator doctor` reports the browser launches
 - Port 3000 is available (or set `testServerPort` in the config)
 - The `public/` directory exists (run `hugo` first)
 
@@ -258,20 +259,39 @@ Add pages you do not want tested to `skipPaths`, for example `skipPaths: ['/rss.
 
 ---
 
-## Upgrading
+## What lives where
 
-After updating the package in an existing project:
+All validation logic lives in this package. A site commits only configuration:
 
-```bash
-npx hugo-validator update-tests        # new test files, including tests/helpers.ts
-npx hugo-validator setup-hooks --force # hook now runs validate --full
-npx hugo-validator clear-cache
+```
+my-hugo-site/
+├── hugo-validator/
+│   ├── hugo-validator.config.js   # site settings (committed)
+│   ├── .stylelintrc.json          # extends the package's rules (committed)
+│   ├── .htmlvalidate.json         # extends the package's rules (committed)
+│   ├── .runtime/                  # tests + Playwright config, synced from the package on every run (gitignored)
+│   ├── reports/                   # timestamped logs (gitignored)
+│   └── .validation-cache.json     # smart-mode cache (gitignored)
+└── .githooks/pre-commit           # generated, runs: npx hugo-validator validate --full
 ```
 
-- `hugo-validator/playwright.config.ts` is not regenerated. To make `testServerPort` and `testServerCommand` take effect, delete it and run `npx hugo-validator init`, which recreates only missing files.
-- Broken external links are now warnings by default. Set `links.failOnExternal: true` to make them fail validation again.
-- The default minimum touch target changed from 44px to 24px (WCAG 2.2 AA). Set `interaction.minTouchTarget: 44` to keep the stricter AAA size.
-- Add `hugo-validator/.validation-cache.json` and `VALIDATION-REPORT.md` to `.gitignore` (new projects get this from `init`).
+The tests always match the installed package version. There is nothing to refresh after an upgrade.
+
+## Upgrading from an older setup
+
+```bash
+npx hugo-validator migrate         # lists what would be removed, changes nothing
+npx hugo-validator migrate --yes   # removes it, regenerates the hook, points npm scripts at the package
+npx hugo-validator doctor
+```
+
+`migrate` removes only files that are recognisably the validator's own: committed copies of the tests, old Playwright configs, duplicate root linter configs, output folders of the earlier shell pipeline, and a pre-commit hook that does not call hugo-validator. Tracked files stay recoverable from git.
+
+Behaviour changes to know about:
+- Broken external links are warnings by default. Set `links.failOnExternal: true` to make them fail validation.
+- The default minimum touch target is 24px (WCAG 2.2 AA). Set `interaction.minTouchTarget: 44` for the stricter AAA size.
+- Pages are discovered from `public/`, so orphan pages are tested. Use `skipPaths` to leave pages out.
+- The test server is built in. Python is no longer needed. A folder without `index.html` is a 404, as on a real static host.
 
 ---
 

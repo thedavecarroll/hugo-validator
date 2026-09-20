@@ -2,8 +2,10 @@
 
 const { program } = require('commander');
 const { version } = require('../package.json');
-const { init, updateTests } = require('../lib/init');
-const { validate, clearCache } = require('../lib/validate');
+const { init } = require('../lib/init');
+const { validate, clearCache, runTests } = require('../lib/validate');
+const { doctor } = require('../lib/doctor');
+const { migrate } = require('../lib/migrate');
 const { setupHooks } = require('../lib/hooks');
 
 program
@@ -53,15 +55,50 @@ program
   });
 
 program
-  .command('update-tests')
-  .description('Refresh hugo-validator/tests/ from the installed package (config is not touched)')
-  .action(async () => {
+  .command('test [filters...]')
+  .description('Run the Playwright tests directly, optionally filtered (e.g. "links", "a11y")')
+  .option('--ui', 'Open the Playwright UI (needs a display)')
+  .action(async (filters, options) => {
     try {
-      await updateTests();
+      process.exit(await runTests(filters, options));
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
     }
+  });
+
+program
+  .command('doctor')
+  .description('Check that this machine and site are ready: Node, Hugo, browser, packages, config')
+  .action(async () => {
+    try {
+      process.exit(await doctor());
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('migrate')
+  .description('List files left by older setups. With --yes, remove them and update hook and npm scripts')
+  .option('--yes', 'Apply the changes (without it, nothing is modified)')
+  .action(async (options) => {
+    try {
+      await migrate(options);
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('update-tests', { hidden: true })
+  .description('Removed: tests are synced from the package on every run')
+  .action(() => {
+    console.log('update-tests is no longer needed. The tests are synced from the installed');
+    console.log('package into hugo-validator/.runtime/ on every run. To remove old committed');
+    console.log('copies, run: npx hugo-validator migrate');
   });
 
 program
