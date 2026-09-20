@@ -41,6 +41,25 @@ test('the Node version running these tests is supported', () => {
     `tests are running on Node ${process.version}, outside the supported ${pkg.engines.node}`);
 });
 
+test('@types/node describes the oldest supported Node, not a newer one', () => {
+  // Newer types make the type check accept APIs that do not exist on the
+  // supported minimum. Nothing else can catch that: type definitions never
+  // run, so CI stays green on such a bump.
+  const supportedMajor = minimumNode.major;
+  const fix = `Either revert the @types/node bump, or raise the supported Node on purpose: engines.node in package.json, ` +
+    'the README requirements table, docs/ARCH-SETUP.md and the CI matrix, all together.';
+
+  const installed = findPackage('@types/node', PACKAGE_ROOT);
+  assert.ok(installed, '@types/node is not installed - run npm install');
+  assert.strictEqual(semver.major(installed.manifest.version), supportedMajor,
+    `@types/node ${installed.manifest.version} is installed, but the package supports Node ${pkg.engines.node}. ${fix}`);
+
+  const range = pkg.devDependencies['@types/node'];
+  assert.match(range, /^\^\d+\.\d+\.\d+$/, 'keep the @types/node range in the caret form, e.g. ^24.0.0');
+  assert.strictEqual(semver.minVersion(range).major, supportedMajor,
+    `devDependencies lists @types/node ${range}, but the package supports Node ${pkg.engines.node}. ${fix}`);
+});
+
 test('the tools are real dependencies, not peers', () => {
   for (const name of TOOLS) {
     assert.ok(pkg.dependencies[name], `${name} must be in dependencies so sites do not have to list it`);

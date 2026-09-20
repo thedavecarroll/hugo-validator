@@ -18,6 +18,14 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
       # Majors come one at a time: they are the ones that need reading
+    ignore:
+      # Types must describe the OLDEST supported Node, not the newest, or the
+      # type check accepts code that crashes on the supported minimum. CI stays
+      # green on such a bump, because type definitions never run.
+      # Raise this by hand, together with engines.node in package.json.
+      # test/engines.test.js enforces the same rule.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
