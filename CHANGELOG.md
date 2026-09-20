@@ -3,6 +3,15 @@
 Versions follow [semantic versioning](https://semver.org/). Sites that install with
 `github:thedavecarroll/hugo-validator#semver:^2.0.0` receive every 2.x release through `npm update hugo-validator`.
 
+## Unreleased
+
+Nothing here changes what a site installs, so none of it needs a release.
+
+### Internal
+
+- `@types/node` stays on the major of the oldest supported Node. Dependabot ignores its major bumps, and a unit test fails if the installed types and `engines.node` disagree.
+- `docs/RELEASING.md` explains which changes need a release and which do not.
+
 ## 2.0.0
 
 The first release since 1.0.0. All validation logic now lives in the package, and a site commits configuration only.
