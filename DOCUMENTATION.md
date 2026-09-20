@@ -26,11 +26,11 @@ module.exports = {
   // CSS validation glob pattern
   cssPattern: 'themes/*/assets/scss/**/*.scss',
 
-  // HTML validation: every public/**/*.html file is validated, minus these globs
+  // HTML validation: every public/**/*.html file is validated, minus these globs.
+  // Hugo's redirect stubs (aliases and /page/1/) are skipped automatically:
+  // Hugo generates them without a <body>, and you cannot fix them.
   htmlValidation: {
-    exclude: [
-      '**/page/*/index.html', // Hugo pagination redirect pages
-    ],
+    exclude: [],
   },
 
   // Paths to skip in accessibility/link tests

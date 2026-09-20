@@ -1,0 +1,9 @@
+# Sample site for hugo-validator's end-to-end tests. Mirrors the shape of a
+# real site: wrapper, nav, SCSS through Dart Sass, an alias, a download, an
+# orphan page. Keep it free of external links so the tests need no network.
+baseURL: https://fixture.test/
+title: Fixture Site
+disableKinds:
+  - taxonomy
+  - term
+  - rss

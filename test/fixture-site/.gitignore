@@ -1,0 +1,8 @@
+public/
+resources/
+.hugo_build.lock
+node_modules/
+hugo-validator/.runtime/
+hugo-validator/reports/
+hugo-validator/.validation-cache.json
+VALIDATION-REPORT.md

@@ -9,7 +9,7 @@ sudo pacman -S --needed git openssh nodejs npm hugo jq
 ```
 
 - Arch's `hugo` package is the extended build, which SCSS needs.
-- Node must be 22.22 or newer. Check with `node --version`.
+- Node must be 24.8.0 or newer. Arch's `nodejs` package tracks the current release, so it qualifies. Check with `node --version`.
 - Port cleanup uses `lsof`, `ss` or `fuser`, whichever exists. `ss` ships with `iproute2`, which is part of the base system, so nothing extra is required.
 - Dart Sass comes from the `sass-embedded` npm package in each site, which ships Linux binaries. No system `sass` is needed.
 

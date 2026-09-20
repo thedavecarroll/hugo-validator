@@ -20,8 +20,9 @@ Comprehensive validation pipeline for Hugo sites. Catch broken links, accessibil
 Run these commands **from your Hugo site's root directory**:
 
 ```bash
-# Install the package
-npm install --save-dev github:thedavecarroll/hugo-validator
+# Install the package (GitHub only, follows 2.x releases)
+npm install --save-dev "github:thedavecarroll/hugo-validator#semver:^2.0.0"
+npx playwright install chromium
 
 # Initialize - creates config files in your site repo
 npx hugo-validator init
@@ -123,7 +124,7 @@ For complete configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
 
 | Tool | Minimum Version | Recommended | Notes |
 |------|-----------------|-------------|-------|
-| Node.js | 22.22.0 | 24+ | Minimum set by html-validate 11 and commander 15 |
+| Node.js | 24.8.0 | current | The minimum every dependency supports. A unit test enforces it |
 | Hugo | 0.100.0 | 0.166+ | Extended version required for SCSS |
 | Dart Sass | 1.50.0 | 1.97+ | System install required (not npm sass package) |
 | OS | macOS or Linux | | No GUI needed. Port cleanup uses `lsof`, `ss` or `fuser`, whichever exists. Windows is not supported (WSL works). See [docs/ARCH-SETUP.md](docs/ARCH-SETUP.md) for a headless Arch Linux setup. |
@@ -131,7 +132,7 @@ For complete configuration options, see [DOCUMENTATION.md](DOCUMENTATION.md).
 ### Version Check
 
 ```bash
-node --version      # Should be v22.22.0 or higher
+node --version      # Should be v24.8.0 or higher
 hugo version        # Should be 0.100.0 or higher (extended)
 sass --version      # Should be 1.50.0 or higher (Dart Sass)
 ```
@@ -158,38 +159,43 @@ sudo ln -s /usr/local/dart-sass/sass /usr/local/bin/sass
 
 **Why not npm sass?** The npm `sass` package conflicts with Hugo's embedded Dart Sass protocol. Using the native binary avoids PATH conflicts when running through npx.
 
-### Peer Dependencies
+### The tools come with the package
 
-Installed automatically when you run `npm install`:
-- `@playwright/test` ^1.49.0
-- `@axe-core/playwright` ^4.11.0
-- `html-validate` ^11.16.0
-- `stylelint` ^17.15.0
-- `stylelint-config-standard-scss` ^17.0.0
+Your site needs **one** dev dependency: `hugo-validator`. It brings Playwright, axe, html-validate, stylelint and the SCSS rule set with it, at versions that are tested together. Do not list those tools in your site's `package.json`. Listing them pins old versions, and `npx hugo-validator doctor` will tell you so.
+
+After installing, or after any update that brings a new Playwright, download its browser once:
+
+```bash
+npx playwright install chromium
+```
 
 ---
 
 ## Install and Update
 
-### Installing a Specific Version
+hugo-validator is distributed from GitHub only. It is not on the npm registry.
+
+### Installing
 
 ```bash
-# Install latest (from main branch)
-npm install --save-dev github:thedavecarroll/hugo-validator
+# Recommended: follow 2.x releases. npm resolves the range against the repo's version tags.
+npm install --save-dev "github:thedavecarroll/hugo-validator#semver:^2.0.0"
 
-# Install a specific version (recommended for stability)
+# Or pin one exact release
 npm install --save-dev github:thedavecarroll/hugo-validator#v2.0.0
 ```
+
+Your `package-lock.json` records the exact commit either way, so installs stay reproducible.
 
 ### Updating
 
 ```bash
-# Update to latest on main branch
-npm update hugo-validator
-
-# Update to a specific new version
-npm install --save-dev github:thedavecarroll/hugo-validator#v2.0.0
+npm update hugo-validator          # newest release inside your range
+npx playwright install chromium    # only needed when Playwright itself was updated
+npx hugo-validator doctor
 ```
+
+There is nothing else to refresh. The tests and tool versions live in the package. See [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ### Checking Your Current Version
 
