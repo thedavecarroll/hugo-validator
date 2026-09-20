@@ -1,0 +1,4 @@
+{
+  "extends": ["hugo-validator/configs/stylelint"],
+  "rules": {}
+}

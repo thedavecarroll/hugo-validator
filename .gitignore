@@ -2,7 +2,9 @@ node_modules/
 .DS_Store
 *.log
 
-# Test artifacts (when running hugo-validator on itself)
-VALIDATION-REPORT.md
-.validation-reports/
-hugo-validator/
+# Test artifacts (when running hugo-validator on itself).
+# Anchored to the repo root: test/fixture-site/hugo-validator/ is the sample
+# site's config folder and must be committed.
+/VALIDATION-REPORT.md
+/.validation-reports/
+/hugo-validator/
