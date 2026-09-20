@@ -29,9 +29,9 @@ jobs:
         # 24 is the supported minimum line. "latest" warns before a future Node breaks something.
         node: ['24', 'latest']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -60,7 +60,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compare the tag with package.json
         run: |
           version="v$(node -p "require('./package.json').version")"
