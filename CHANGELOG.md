@@ -3,6 +3,16 @@
 Versions follow [semantic versioning](https://semver.org/). Sites that install with
 `github:thedavecarroll/hugo-validator#semver:^2.0.0` receive every 2.x release through `npm update hugo-validator`.
 
+## 2.1.0
+
+### Added
+
+- **Heading checks, off by default.** A page with no `<h1>`, or with several, passes WCAG 2.2 AA, so validation never flagged it. The new `headings` config section adds three opt-in checks to the accessibility suite:
+  - `requireH1: true` fails a page with no `<h1>` (axe `page-has-heading-one`).
+  - `allowMultipleH1: false` fails a page with more than one `<h1>` (reported as `multiple-h1`).
+  - `allowSkippedLevels: false` fails a heading that skips a level (axe `heading-order`).
+- Pages in `skipPaths` are exempt. Nothing changes for a site that does not add the section.
+
 ## 2.0.1
 
 ### Security
