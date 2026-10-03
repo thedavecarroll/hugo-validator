@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { loadConfig, getAllPages, shard, resolveShardCount, logProgress } from './helpers';
+import { loadConfig, getAllPages, shard, resolveShardCount, logProgress, headingAxeRules } from './helpers';
 
 const config = loadConfig();
 
@@ -39,12 +39,28 @@ test.describe('Accessibility (WCAG 2.2)', () => {
             },
             rules: {
               'target-size': { enabled: true },
+              ...headingAxeRules(config.headings),
             },
           })
           .analyze();
 
-        if (results.violations.length > 0) {
-          violations.push({ url: currentPath, issues: results.violations });
+        const issues: any[] = [...results.violations];
+
+        // axe has no rule for more than one <h1>, so count them here
+        if (!config.headings.allowMultipleH1) {
+          const h1Count = await page.locator('h1').count();
+          if (h1Count > 1) {
+            issues.push({
+              id: 'multiple-h1',
+              help: `Page has ${h1Count} <h1> elements, expected one`,
+              impact: 'moderate',
+              nodes: new Array(h1Count),
+            });
+          }
+        }
+
+        if (issues.length > 0) {
+          violations.push({ url: currentPath, issues });
         }
         logProgress(label, done + 1, shardPages.length);
       }

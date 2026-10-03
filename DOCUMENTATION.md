@@ -48,6 +48,13 @@ module.exports = {
     shards: 0, // 0 = automatic (about 40% of CPU cores). Set a number to override
   },
 
+  // Heading structure: best practice rather than WCAG 2.2 AA, so each check is off by default
+  headings: {
+    requireH1: false,         // true = every page must have an <h1>
+    allowMultipleH1: true,    // false = more than one <h1> on a page fails
+    allowSkippedLevels: true, // false = a jump such as <h2> to <h4> fails
+  },
+
   // Link testing
   links: {
     failOnExternal: false,    // Broken external links are warnings. true = they fail validation
@@ -204,6 +211,25 @@ The pre-commit hook always runs with `--full`.
 - Uses axe-core for comprehensive accessibility checking
 - Includes WCAG 2.0, 2.1, and 2.2 rules
 - Reports violations with impact level and affected elements
+
+#### Heading checks (opt-in)
+
+A page with no `<h1>`, or with two, passes WCAG 2.2 AA: heading structure is a best practice, not a success criterion. The `headings` section adds three checks to this suite. Each is off until you switch it on, and failures appear in the accessibility results under the rule name shown.
+
+| Setting | Fails when | Reported as |
+|---------|-----------|-------------|
+| `requireH1: true` | a page has no `<h1>` | `page-has-heading-one` (axe) |
+| `allowMultipleH1: false` | a page has more than one `<h1>` element | `multiple-h1` |
+| `allowSkippedLevels: false` | a heading skips a level, such as `<h2>` to `<h4>` | `heading-order` (axe) |
+
+```javascript
+headings: {
+  requireH1: true,
+  allowMultipleH1: false,
+},
+```
+
+Pages in `skipPaths` are exempt, as they are from the whole suite. Hugo's redirect stubs are never tested. `allowSkippedLevels: false` is the strictest of the three: Markdown content that jumps levels fails it.
 
 ### Responsive (`responsive.spec.ts`)
 
