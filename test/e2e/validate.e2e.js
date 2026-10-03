@@ -182,6 +182,31 @@ test('detects: accessibility violation (image without alt text)', () => {
   assert.ok(failures.some(f => /WCAG/.test(f.name) && /image-alt/.test(f.errors)), JSON.stringify(failures, null, 2));
 });
 
+test('detects: missing <h1>, multiple <h1> and a skipped level, only when switched on', () => {
+  const root = makeSite();
+  // List pages (/posts/) lose their <h1>
+  edit(root, 'layouts/_default/list.html', html => html.replace('<h1>{{ .Title }}</h1>', '<p>{{ .Title }}</p>'));
+  // Single pages gain a second <h1>, then jump from <h1> to <h4>
+  edit(root, 'layouts/_default/single.html', html => html.replace('{{ .Content }}',
+    '{{ .Content }}\n<h1>Second top-level heading</h1>\n<h4>Skipped two levels</h4>'));
+
+  // Heading structure is best practice, not WCAG 2.2 AA: by default none of it fails
+  const lenient = cli(root, ['validate', '--full']);
+  assert.strictEqual(lenient.status, 0, lenient.output);
+
+  edit(root, 'hugo-validator/hugo-validator.config.js', config => config.replace('module.exports = {',
+    'module.exports = {\n  headings: { requireH1: true, allowMultipleH1: false, allowSkippedLevels: false },'));
+
+  const strict = cli(root, ['validate']);
+  assert.strictEqual(strict.status, 1, strict.output);
+  assert.match(strict.output, /❌ Playwright tests failed/);
+  const errors = failedTests(root).filter(f => /WCAG/.test(f.name)).map(f => f.errors).join('\n');
+  for (const finding of ['page-has-heading-one', 'multiple-h1', 'heading-order']) {
+    assert.ok(errors.includes(`[${finding}]`), `${finding} not reported in:\n${errors}`);
+  }
+  assert.match(errors, /Page has 2 <h1> elements, expected one/);
+});
+
 test('detects: broken internal link, missing download, and a folder without an index page', () => {
   const root = makeSite();
   fs.mkdirSync(path.join(root, 'static', 'images'));

@@ -75,6 +75,40 @@ test('loadConfig adds user skip domains to the defaults', () => {
   assert.strictEqual(config.links.ignoreHTTPSErrors, false);
 });
 
+test('heading checks: off by default, and the same defaults as lib/config.js', () => {
+  const { getDefaultConfig } = require('../lib/config');
+  const defaults = helpers.getDefaults().headings;
+  assert.deepStrictEqual(defaults, { requireH1: false, allowMultipleH1: true, allowSkippedLevels: true });
+  assert.deepStrictEqual(defaults, getDefaultConfig().headings, 'the two copies of the defaults must agree');
+  assert.deepStrictEqual(helpers.headingAxeRules(defaults), {});
+});
+
+test('headingAxeRules enables one axe rule per switch', () => {
+  const off = helpers.getDefaults().headings;
+  assert.deepStrictEqual(helpers.headingAxeRules({ ...off, requireH1: true }), {
+    'page-has-heading-one': { enabled: true },
+  });
+  assert.deepStrictEqual(helpers.headingAxeRules({ ...off, allowSkippedLevels: false }), {
+    'heading-order': { enabled: true },
+  });
+  // More than one <h1> has no axe rule: a11y.spec.ts counts them itself
+  assert.deepStrictEqual(helpers.headingAxeRules({ ...off, allowMultipleH1: false }), {});
+});
+
+test('loadConfig merges a partial headings section over the defaults', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-validator-headings-'));
+  fs.mkdirSync(path.join(root, 'hugo-validator'));
+  fs.writeFileSync(
+    path.join(root, 'hugo-validator', 'hugo-validator.config.js'),
+    'module.exports = { headings: { requireH1: true } };'
+  );
+  assert.deepStrictEqual(helpers.loadConfig(root).headings, {
+    requireH1: true,
+    allowMultipleH1: true,
+    allowSkippedLevels: true,
+  });
+});
+
 test('isDirectoryListing recognises the python http.server listing', () => {
   assert.ok(helpers.isDirectoryListing('<html><head><title>Directory listing for /images/</title>'));
   assert.ok(!helpers.isDirectoryListing('<html><head><title>My post</title>'));

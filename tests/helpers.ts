@@ -13,6 +13,11 @@ export interface ValidatorConfig {
   accessibility: {
     shards: number;
   };
+  headings: {
+    requireH1: boolean;
+    allowMultipleH1: boolean;
+    allowSkippedLevels: boolean;
+  };
   links: {
     failOnExternal: boolean;
     ignoreHTTPSErrors: boolean;
@@ -48,6 +53,12 @@ export function getDefaults(): ValidatorConfig {
     skipPaths: ['/rss.xml', '/sitemap.xml', '/robots.txt'],
     accessibility: {
       shards: 0, // parallel accessibility tests. 0 = automatic (about 40% of CPU cores)
+    },
+    // Heading structure. Best practice, not WCAG 2.2 AA, so every check is opt-in.
+    headings: {
+      requireH1: false, // true = every page must have an <h1>
+      allowMultipleH1: true, // false = more than one <h1> on a page fails
+      allowSkippedLevels: true, // false = a jump such as <h2> to <h4> fails
     },
     links: {
       failOnExternal: false, // external sites break for reasons you do not control
@@ -250,6 +261,18 @@ export function shard<T>(items: T[], count: number): T[][] {
   const result: T[][] = Array.from({ length: groups }, () => []);
   items.forEach((item, index) => result[index % groups].push(item));
   return result;
+}
+
+/**
+ * Extra axe rules for the heading checks a site has switched on.
+ * Both are axe "best-practice" rules, so the WCAG tags alone never run them.
+ * The multiple-<h1> check has no axe rule and is done in a11y.spec.ts.
+ */
+export function headingAxeRules(headings: ValidatorConfig['headings']): Record<string, { enabled: boolean }> {
+  const rules: Record<string, { enabled: boolean }> = {};
+  if (headings.requireH1) rules['page-has-heading-one'] = { enabled: true };
+  if (!headings.allowSkippedLevels) rules['heading-order'] = { enabled: true };
+  return rules;
 }
 
 /** python3 -m http.server answers 200 with a listing for folders without index.html */

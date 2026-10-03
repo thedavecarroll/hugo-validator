@@ -20,6 +20,14 @@ test('defaults: no dead htmlValidation.pattern, AA touch target', () => {
   assert.strictEqual(defaults.links.failOnExternal, false);
 });
 
+test('defaults: heading checks are opt-in', () => {
+  assert.deepStrictEqual(getDefaultConfig().headings, {
+    requireH1: false,
+    allowMultipleH1: true,
+    allowSkippedLevels: true,
+  });
+});
+
 test('loadConfig deep merges the user config over defaults', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-validator-cfg-'));
   fs.mkdirSync(path.join(root, 'hugo-validator'));
