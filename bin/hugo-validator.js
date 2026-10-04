@@ -7,6 +7,7 @@ const { validate, clearCache, runTests } = require('../lib/validate');
 const { doctor } = require('../lib/doctor');
 const { migrate } = require('../lib/migrate');
 const { setupHooks } = require('../lib/hooks');
+const { scrubImages } = require('../lib/images');
 
 program
   .name('hugo-validator')
@@ -41,6 +42,19 @@ program
     try {
       const exitCode = await validate(options);
       process.exit(exitCode);
+    } catch (error) {
+      console.error('Error:', error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('scrub-images')
+  .description('Remove metadata (EXIF, GPS, XMP, PNG text) from the JPEG, PNG and WebP images of the site')
+  .option('--check', 'Report the images that carry metadata and change nothing')
+  .action((options) => {
+    try {
+      process.exit(scrubImages(options));
     } catch (error) {
       console.error('Error:', error.message);
       process.exit(1);
