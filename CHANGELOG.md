@@ -3,6 +3,18 @@
 Versions follow [semantic versioning](https://semver.org/). Sites that install with
 `github:thedavecarroll/hugo-validator#semver:^2.0.0` receive every 2.x release through `npm update hugo-validator`.
 
+## 2.2.0
+
+### Added
+
+- **Image metadata scrubbing, off by default.** Photos and screenshots carry GPS coordinates, device names, timestamps and embedded thumbnails, and nothing removed them before publishing. With `images: { scrubMetadata: true }`:
+  - a commit strips the metadata from each staged JPEG, PNG or WebP image, re-stages it and lists what was removed;
+  - any other `validate` run fails when an image of the site carries metadata, and rewrites nothing.
+- **New command `scrub-images`** cleans every image of the site; `--check` only reports. Use it once before switching the setting on.
+- The picture data is never re-encoded. The colour profile is kept, and so is the orientation, so rotated photos stay upright. Formats are recognised by content, not by file name.
+- A staged HEIC, AVIF or TIFF image blocks the commit, because it cannot be cleaned here; so does an image that carries metadata and is only partly staged. `images.exclude` exempts paths.
+- No new dependency, and the pre-commit hook does not need regenerating. Nothing changes for a site that does not add the section.
+
 ## 2.1.0
 
 ### Added

@@ -68,6 +68,7 @@ npx --no hugo-validator test              # Run the Playwright tests directly
 npx --no hugo-validator test links        # ...filtered, e.g. links or a11y
 npx --no hugo-validator doctor            # Is this machine and site ready? Node, Hugo, browser, packages, config
 npx --no hugo-validator migrate           # List files left by older setups (add --yes to remove them)
+npx --no hugo-validator scrub-images      # Remove EXIF, GPS and other metadata from images (--check only reports)
 npx --no hugo-validator clear-cache       # Clear validation cache
 ```
 

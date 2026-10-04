@@ -28,6 +28,10 @@ test('defaults: heading checks are opt-in', () => {
   });
 });
 
+test('defaults: image metadata scrubbing is opt-in', () => {
+  assert.deepStrictEqual(getDefaultConfig().images, { scrubMetadata: false, exclude: [] });
+});
+
 test('loadConfig deep merges the user config over defaults', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hugo-validator-cfg-'));
   fs.mkdirSync(path.join(root, 'hugo-validator'));

@@ -19,6 +19,9 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+const { jpeg } = require('../image-samples');
+const { readTiff } = require('../../lib/images');
+
 const PACKAGE_ROOT = path.join(__dirname, '..', '..');
 const FIXTURE = path.join(PACKAGE_ROOT, 'test', 'fixture-site');
 const CLI = path.join(PACKAGE_ROOT, 'bin', 'hugo-validator.js');
@@ -297,6 +300,52 @@ test('pre-commit hook: without a local install the commit is blocked and npx is 
   assert.match(commit.output, /hugo-validator is not installed in this project\. Run: npm ci/);
   assert.ok(!fs.existsSync(marker), 'the hook called npx, which could reach the npm registry');
   assert.strictEqual(git(root, ['rev-list', '--count', 'HEAD']).output.trim(), '1', 'no second commit was created');
+});
+
+test('images: metadata fails validate when switched on, and a commit strips it from the staged image', () => {
+  const root = makeGitSite();
+  const photo = path.join(root, 'static', 'photo.jpg');
+  const dirty = jpeg({ orientation: 6, gps: true, extras: true });
+  fs.writeFileSync(photo, dirty);
+
+  // Off by default: the image is none of the validator's business
+  const off = cli(root, ['validate', '--full', '--no-report']);
+  assert.strictEqual(off.status, 0, off.output);
+  assert.doesNotMatch(off.output, /images:/);
+
+  edit(root, 'hugo-validator/hugo-validator.config.js', config => config.replace('module.exports = {',
+    'module.exports = {\n  images: { scrubMetadata: true },'));
+
+  // Outside a commit it reports and fails, and changes nothing
+  const check = cli(root, ['validate', '--full', '--no-report']);
+  assert.notStrictEqual(check.status, 0, check.output);
+  assert.match(check.output, /❌ images: 1 image carries metadata/);
+  assert.match(check.output, /static\/photo\.jpg: carries EXIF with GPS, XMP, IPTC, comment, data after the end of the image/);
+  assert.match(check.output, /❌ Validation failed/);
+  assert.ok(fs.readFileSync(photo).equals(dirty), 'validate must not rewrite files outside a commit');
+
+  // A commit cleans the staged image, keeps its orientation, and goes through
+  assert.strictEqual(git(root, ['add', '-A']).status, 0);
+  const commit = git(root, ['commit', '-m', 'first']);
+  assert.strictEqual(commit.status, 0, commit.output);
+  assert.match(commit.output, /🧹 images: removed metadata from 1 staged image/);
+  assert.match(commit.output, /✅ All validations passed/);
+
+  const cleaned = fs.readFileSync(photo);
+  assert.strictEqual(cleaned.indexOf(Buffer.from('II', 'latin1')), -1, 'the original EXIF block is gone');
+  const exifAt = cleaned.indexOf(Buffer.from('Exif\0\0', 'latin1'));
+  assert.deepStrictEqual(readTiff(cleaned.subarray(exifAt + 6)), { orientation: 6, gps: false }, 'orientation kept, GPS gone');
+  for (const marker of ['http://ns.adobe.com', 'Photoshop', 'made with a camera', 'trailing preview image']) {
+    assert.strictEqual(cleaned.indexOf(Buffer.from(marker, 'latin1')), -1, `${marker} is gone`);
+  }
+  const committed = spawnSync('git', ['show', 'HEAD:static/photo.jpg'], { cwd: root });
+  assert.ok(committed.stdout.equals(cleaned), 'the commit holds the cleaned image');
+  assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=no']).output, '', 'nothing left modified');
+
+  // And the command line agrees
+  const again = cli(root, ['scrub-images', '--check']);
+  assert.strictEqual(again.status, 0, again.output);
+  assert.match(again.output, /No metadata in 1 image/);
 });
 
 // ------------------------------------------------------------ init / migrate

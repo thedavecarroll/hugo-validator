@@ -55,6 +55,12 @@ module.exports = {
     allowSkippedLevels: true, // false = a jump such as <h2> to <h4> fails
   },
 
+  // Image metadata (EXIF with GPS, XMP, IPTC, comments, PNG text): off by default
+  images: {
+    scrubMetadata: false,     // true = strip it from staged images on commit; validate fails when an image carries it
+    exclude: [],              // glob patterns, relative to the site root, that are left alone
+  },
+
   // Link testing
   links: {
     failOnExternal: false,    // Broken external links are warnings. true = they fail validation
@@ -138,6 +144,17 @@ Checks that this machine and site can run validation: Node version, Hugo extende
 
 Lists files left behind by older setups. With `--yes` it removes them, regenerates the pre-commit hook and points the npm scripts at the package. Without `--yes` nothing changes.
 
+### `npx --no hugo-validator scrub-images`
+
+Removes metadata from every JPEG, PNG and WebP image of the site, in place. See [Image metadata](#image-metadata-opt-in).
+
+```bash
+npx --no hugo-validator scrub-images          # Clean the images and list what was removed
+npx --no hugo-validator scrub-images --check  # Only list the images that carry metadata; exits 1 if any do
+```
+
+The command works whether or not `images.scrubMetadata` is on.
+
 ### `npx --no hugo-validator setup-hooks`
 
 Reinstall git hooks (useful if they get removed):
@@ -162,6 +179,43 @@ The pipeline runs these stages in order:
 If any stage fails, the commit is blocked (when run as pre-commit hook).
 If the Hugo build fails, HTML validation and the tests are skipped, because `public/` would be stale.
 The build uses `--cleanDestinationDir`, so pages you deleted are removed from `public/`.
+
+### Image metadata (opt-in)
+
+Photos and screenshots carry data you may not mean to publish: where a photo was taken (GPS), the device, the time, the editing software, an embedded thumbnail of the uncropped original. Nothing in a Hugo build removes it.
+
+```javascript
+images: {
+  scrubMetadata: true,
+  exclude: ['static/originals/**'], // optional
+},
+```
+
+With `scrubMetadata: true`:
+
+| When | What happens |
+|------|--------------|
+| A commit (the pre-commit hook) | Each staged JPEG, PNG or WebP image is cleaned, re-staged, and listed with what was removed. The commit continues. |
+| Any other `validate` run | Every image of the site is checked. An image that carries metadata fails validation; nothing is rewritten. |
+| `validate --only <stage>` | The image check is skipped. |
+
+This is a check that runs before the stages, not a cached stage: it runs on every `validate`.
+
+**Removed:** EXIF (including GPS and the embedded thumbnail), XMP, IPTC, comments, other application data, PNG text and timestamp chunks, and anything after the end of the image.
+
+**Kept:** the picture data, byte for byte (nothing is re-encoded), the colour profile, and the orientation. A photo stored rotated keeps a small EXIF block that holds the orientation and nothing else, so it does not turn sideways.
+
+**Formats:** JPEG, PNG and WebP, recognised by content, so a JPEG saved as `.png` is cleaned as a JPEG. The print resolution recorded in EXIF goes with the rest; browsers do not use it.
+
+**Blocked at commit:**
+
+- A staged HEIC, AVIF or TIFF image. These often carry GPS and cannot be cleaned here. Convert the image, or list it under `images.exclude`.
+- A staged image that carries metadata and also has changes that are not staged. Rewriting it would stage changes you held back. Stage or stash the rest, then commit again.
+- A file that cannot be read as the image it claims to be.
+
+Images in `node_modules`, `public`, `resources` and the `hugo-validator` folder are never looked at. SVG and GIF files are not checked.
+
+**Switching it on in an existing site:** run `npx --no hugo-validator scrub-images` once, look at the list, commit the cleaned images, then set `scrubMetadata: true`.
 
 ### Smart mode
 
@@ -340,6 +394,7 @@ It runs the locally installed package directly and never uses npx. hugo-validato
 Hooks generated before 2.0.1 used npx. `doctor` warns about them. Regenerate with `npx --no hugo-validator setup-hooks --force`.
 
 The hook always runs the complete pipeline. Cached results never gate a commit.
+With `images.scrubMetadata` on, the same hook also strips metadata from staged images; it needs no regenerating, because the work happens inside `validate`.
 If `core.hooksPath` is already set by another tool, `setup-hooks` leaves it unchanged unless you pass `--force`.
 
 All logic lives in the package, including the tests. On every run they are synced into `hugo-validator/.runtime/`, which is gitignored, together with a generated Playwright config. Sites commit configuration only.
