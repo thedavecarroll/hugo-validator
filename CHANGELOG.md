@@ -3,6 +3,13 @@
 Versions follow [semantic versioning](https://semver.org/). Sites that install with
 `github:thedavecarroll/hugo-validator#semver:^2.0.0` receive every 2.x release through `npm update hugo-validator`.
 
+## 2.2.1
+
+### Changed
+
+- Dependency updates (Dependabot PR #10): html-validate 11.16.0 to 11.16.1, stylelint 17.15.0 to 17.16.0, sass-embedded 1.105.0 to 1.105.1, @types/node 24.13.6 to 24.19.1. No change in behaviour; a release so sites pick them up.
+- The `braces` advisory (GHSA-vfj7-8cjw-p6xm, via stylelint and micromatch) remains open upstream. The maintainer disputes it, and no fixed version exists. It needs a pattern of thousands of characters from an untrusted source; the only patterns here come from each site's own config.
+
 ## 2.2.0
 
 ### Added

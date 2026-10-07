@@ -1,6 +1,6 @@
 {
   "name": "hugo-validator",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Comprehensive validation pipeline for Hugo sites - pre-commit hooks, accessibility testing, link checking, and more",
   "keywords": [
     "hugo",
