@@ -45,10 +45,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.63.0",
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.0",
     "commander": "^15.0.0",
-    "html-validate": "^11.16.1",
+    "html-validate": "^11.18.0",
     "stylelint": "^17.16.0",
     "stylelint-config-standard-scss": "^17.0.0"
   },
@@ -63,9 +63,9 @@
     "linux"
   ],
   "devDependencies": {
-    "@types/node": "^24.19.1",
-    "sass-embedded": "^1.105.1",
-    "semver": "^7.8.5",
+    "@types/node": "^24.19.2",
+    "sass-embedded": "^1.108.0",
+    "semver": "^7.8.6",
     "typescript": "^7.0.2"
   }
 }
